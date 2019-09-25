@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <root level="ERROR">
+        <appender name="consoleAppender" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <Pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg %n</Pattern>
+                <charset>UTF-8</charset>
+            </encoder>
+            <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+                <level>TRACE</level>
+            </filter>
+        </appender>
+        <appender name="dailyRollingFileAppender" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <File>${user.dir}/logs/simple-rpc.log</File>
+            <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+                <!-- daily rollover -->
+                <FileNamePattern>${user.dir}/logs/simple-rpc.%d{yyyy-MM-dd}.log</FileNamePattern>
+                <!-- keep 180 days' worth of history -->
+                <maxHistory>180</maxHistory>
+            </rollingPolicy>
+            <encoder>
+                <Pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg %n</Pattern>
+                <charset>UTF-8</charset>
+            </encoder>
+        </appender>
+    </root>
+    <logger name="vip.toby" level="INFO"/>
+</configuration>
