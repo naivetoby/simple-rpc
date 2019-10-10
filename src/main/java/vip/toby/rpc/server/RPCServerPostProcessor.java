@@ -10,6 +10,7 @@ import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import vip.toby.rpc.annotation.RPCServer;
 import vip.toby.rpc.entity.RPCServerType;
@@ -23,9 +24,8 @@ import java.util.Map;
 public class RPCServerPostProcessor implements BeanPostProcessor {
 
     @Autowired
+    @Lazy
     private ConnectionFactory connectionFactory;
-    @Autowired
-    private DirectExchange serviceExchange;
 
     @Override
     public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
@@ -54,12 +54,12 @@ public class RPCServerPostProcessor implements BeanPostProcessor {
                     Map<String, Object> params = new HashMap<>();
                     params.put("x-message-ttl", rpcServer.xMessageTTL());
                     Queue syncQueue = new Queue(queueName, false, false, false, params);
-                    BindingBuilder.bind(syncQueue).to(serviceExchange);
+                    BindingBuilder.bind(syncQueue).to(new DirectExchange("simple.rpc", true, false)).with(syncQueue.getName());
                     messageListenerContainer(connectionFactory, new RPCServerHandler(bean, queueName, RPCServerType.SYNC.getName()), syncQueue, rpcServer.threadNum());
                     break;
                 case ASYNC:
                     Queue asyncQueue = new Queue(queueName.concat(".async"), true, false, false);
-                    BindingBuilder.bind(asyncQueue).to(serviceExchange);
+                    BindingBuilder.bind(asyncQueue).to(new DirectExchange("simple.rpc", true, false)).with(asyncQueue.getName());
                     messageListenerContainer(connectionFactory, new RPCServerHandler(bean, queueName, RPCServerType.ASYNC.getName()), asyncQueue, rpcServer.threadNum());
                     break;
                 default:

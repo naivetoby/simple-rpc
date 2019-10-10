@@ -12,8 +12,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.listener.api.ChannelAwareMessageListener;
-import org.springframework.beans.factory.DisposableBean;
-import org.springframework.beans.factory.InitializingBean;
 import vip.toby.rpc.annotation.RPCMethod;
 import vip.toby.rpc.entity.ServerStatus;
 
@@ -24,7 +22,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class RPCServerHandler implements ChannelAwareMessageListener, InitializingBean, DisposableBean {
+public class RPCServerHandler implements ChannelAwareMessageListener {
 
     private final static Logger logger = LoggerFactory.getLogger(RPCServerHandler.class);
 
@@ -38,17 +36,14 @@ public class RPCServerHandler implements ChannelAwareMessageListener, Initializi
         this.rpcServer = rpcServer;
         this.name = name;
         this.type = type;
-    }
 
-    @Override
-    public void afterPropertiesSet() {
         // 初始化所有接口
         Class<?> rpcServerClass = rpcServer.getClass();
         for (Method targetMethod : rpcServerClass.getMethods()) {
             if (targetMethod != null && targetMethod.isAnnotationPresent(RPCMethod.class)) {
                 String methodName = targetMethod.getAnnotation(RPCMethod.class).name();
-                String key = type + "_" + name.concat("_").concat(methodName);
-                FastMethod fastMethod = FastClass.create(rpcServerClass).getMethod(key, new Class[]{JSONObject.class});
+                String key = type + "_" + name + "_" + methodName;
+                FastMethod fastMethod = FastClass.create(rpcServerClass).getMethod(targetMethod.getName(), new Class[]{JSONObject.class});
                 if (fastMethod != null) {
                     fastMethodMap.put(key, fastMethod);
                     logger.info("接口注册成功, " + type + " RPCServer: " + name + ", Method: " + methodName);
@@ -56,11 +51,6 @@ public class RPCServerHandler implements ChannelAwareMessageListener, Initializi
             }
         }
         logger.info(type + " RPCServer: " + name + " 已启动");
-    }
-
-    @Override
-    public void destroy() {
-        logger.info(type + " RPCServer: " + name + " 已停止");
     }
 
     @Override
@@ -126,16 +116,16 @@ public class RPCServerHandler implements ChannelAwareMessageListener, Initializi
 
     private void asyncExecute(JSONObject paramData) throws InvocationTargetException {
         // 获得当前command
-        String method = paramData.getString("method");
-        if (StringUtils.isBlank(method)) {
+        String command = paramData.getString("command");
+        if (StringUtils.isBlank(command)) {
             throw new RuntimeException();
         }
         // 获取当前服务的反射方法调用
-        String key = type + "_" + name.concat("_").concat(method);
+        String key = type + "_" + name + "_" + command;
         // 通过缓存来优化性能
         FastMethod fastMethod = fastMethodMap.get(key);
         if (fastMethod == null) {
-            logger.error("接口不存在, " + type + " RPCServer: " + name + ", Method: " + method);
+            logger.error("接口不存在, " + type + " RPCServer: " + name + ", Method: " + command);
             return;
         }
         // 获取data数据
@@ -149,16 +139,16 @@ public class RPCServerHandler implements ChannelAwareMessageListener, Initializi
 
     private JSONObject syncExecute(JSONObject paramData) throws InvocationTargetException {
         // 获得当前command
-        String method = paramData.getString("method");
-        if (StringUtils.isBlank(method)) {
+        String command = paramData.getString("command");
+        if (StringUtils.isBlank(command)) {
             throw new RuntimeException();
         }
         // 获取当前服务的反射方法调用
-        String key = type + "_" + name.concat("_").concat(method);
+        String key = type + "_" + name + "_" + command;
         // 通过缓存来优化性能
         FastMethod fastMethod = fastMethodMap.get(key);
         if (fastMethod == null) {
-            logger.error("接口不存在, " + type + " RPCServer: " + name + ", Method: " + method);
+            logger.error("接口不存在, " + type + " RPCServer: " + name + ", Method: " + command);
             return null;
         }
         // 获取data数据
