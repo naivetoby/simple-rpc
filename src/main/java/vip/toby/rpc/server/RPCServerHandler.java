@@ -42,6 +42,19 @@ public class RPCServerHandler implements ChannelAwareMessageListener, Initializi
 
     @Override
     public void afterPropertiesSet() {
+        // 初始化所有接口
+        Class<?> rpcServerClass = rpcServer.getClass();
+        for (Method targetMethod : rpcServerClass.getMethods()) {
+            if (targetMethod != null && targetMethod.isAnnotationPresent(RPCMethod.class)) {
+                String methodName = targetMethod.getAnnotation(RPCMethod.class).name();
+                String key = type + "_" + name.concat("_").concat(methodName);
+                FastMethod fastMethod = FastClass.create(rpcServerClass).getMethod(key, new Class[]{JSONObject.class});
+                if (fastMethod != null) {
+                    fastMethodMap.put(key, fastMethod);
+                    logger.info("接口注册成功, " + type + " RPCServer: " + name + ", Method: " + methodName);
+                }
+            }
+        }
         logger.info(type + " RPCServer: " + name + " 已启动");
     }
 
@@ -75,12 +88,14 @@ public class RPCServerHandler implements ChannelAwareMessageListener, Initializi
                 JSONObject data = syncExecute(paramData);
                 if (data != null) {
                     double offset = System.currentTimeMillis() - start;
-                    if (offset > 3000) {
+                    if (offset > 1000) {
                         logger.warn("同步调用时间过长, 共耗时: " + offset + "ms, paramData: " + paramData);
                     }
                     // 修改状态
                     serverStatus = ServerStatus.SUCCESS;
                     resultJson.put("data", data);
+                } else {
+                    serverStatus = ServerStatus.NOT_EXIST;
                 }
             } catch (InvocationTargetException e) {
                 // 获取目标异常
@@ -112,15 +127,21 @@ public class RPCServerHandler implements ChannelAwareMessageListener, Initializi
     private void asyncExecute(JSONObject paramData) throws InvocationTargetException {
         // 获得当前command
         String method = paramData.getString("method");
+        if (StringUtils.isBlank(method)) {
+            throw new RuntimeException();
+        }
         // 获取当前服务的反射方法调用
-        FastMethod fastMethod = getFastMethod(method);
+        String key = type + "_" + name.concat("_").concat(method);
+        // 通过缓存来优化性能
+        FastMethod fastMethod = fastMethodMap.get(key);
         if (fastMethod == null) {
+            logger.error("接口不存在, " + type + " RPCServer: " + name + ", Method: " + method);
             return;
         }
         // 获取data数据
         JSONObject data = paramData.getJSONObject("data");
         if (data == null) {
-            return;
+            throw new RuntimeException();
         }
         // 通过发射来调用方法
         fastMethod.invoke(rpcServer, new Object[]{data});
@@ -129,46 +150,24 @@ public class RPCServerHandler implements ChannelAwareMessageListener, Initializi
     private JSONObject syncExecute(JSONObject paramData) throws InvocationTargetException {
         // 获得当前command
         String method = paramData.getString("method");
+        if (StringUtils.isBlank(method)) {
+            throw new RuntimeException();
+        }
         // 获取当前服务的反射方法调用
-        FastMethod fastMethod = getFastMethod(method);
+        String key = type + "_" + name.concat("_").concat(method);
+        // 通过缓存来优化性能
+        FastMethod fastMethod = fastMethodMap.get(key);
         if (fastMethod == null) {
+            logger.error("接口不存在, " + type + " RPCServer: " + name + ", Method: " + method);
             return null;
         }
         // 获取data数据
         JSONObject param = paramData.getJSONObject("data");
         if (param == null) {
-            return null;
+            throw new RuntimeException();
         }
         // 通过反射来调用方法
         return (JSONObject) fastMethod.invoke(rpcServer, new Object[]{param});
-    }
-
-    private FastMethod getFastMethod(String method) {
-        // 校验参数
-        if (StringUtils.isBlank(method)) {
-            return null;
-        }
-        String key = type + "_" + name.concat("_").concat(method);
-        // 通过缓存来优化性能
-        FastMethod fastMethod = fastMethodMap.get(key);
-        if (fastMethod != null) {
-            return fastMethod;
-        }
-        try {
-            Class<?> rpcServerClass = rpcServer.getClass();
-            Method targetMethod = rpcServerClass.getMethod(method, JSONObject.class);
-            if (targetMethod != null && targetMethod.isAnnotationPresent(RPCMethod.class)) {
-                fastMethod = FastClass.create(rpcServerClass).getMethod(method, new Class[]{JSONObject.class});
-                if (fastMethod != null) {
-                    fastMethodMap.put(key, fastMethod);
-                    return fastMethod;
-                }
-            }
-        } catch (NoSuchMethodException e) {
-            // logger.error(e.getMessage(), e);
-        }
-        logger.error("接口不存在, " + type + " RPCServer: " + name + ", Method: " + method);
-        return null;
     }
 
 }

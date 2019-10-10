@@ -8,7 +8,9 @@ public enum ServerStatus {
     // 调用成功
     SUCCESS(1, "调用成功"),
     // 调用失败
-    FAILURE(0, "调用失败");
+    FAILURE(0, "调用失败"),
+    // 调用不存在
+    NOT_EXIST(-1, "调用不存在");
 
     private int status;
     private String message;
