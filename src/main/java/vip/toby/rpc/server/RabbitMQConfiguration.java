@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@ConditionalOnProperty(prefix = "simple-rpc", name = "mode", havingValue = "server")
+@ConditionalOnProperty(prefix = "simple-rpc", name = "mode")
 public class RabbitMQConfiguration {
 
     @Bean

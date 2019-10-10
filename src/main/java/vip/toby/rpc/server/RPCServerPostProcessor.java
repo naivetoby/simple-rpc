@@ -9,7 +9,7 @@ import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.BeanPostProcessor;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import vip.toby.rpc.annotation.RPCServer;
@@ -20,7 +20,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Component
-@ConditionalOnBean(value = {RabbitMQConfiguration.class})
+@ConditionalOnProperty(prefix = "simple-rpc", name = "mode", havingValue = "server")
 public class RPCServerPostProcessor implements BeanPostProcessor {
 
     @Autowired
