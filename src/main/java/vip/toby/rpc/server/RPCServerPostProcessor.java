@@ -19,8 +19,8 @@ import java.lang.annotation.Annotation;
 import java.util.HashMap;
 import java.util.Map;
 
-@Component
 @ConditionalOnProperty(prefix = "simple-rpc", name = "mode", havingValue = "server")
+@Component
 public class RPCServerPostProcessor implements BeanPostProcessor {
 
     @Autowired
