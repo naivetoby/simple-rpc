@@ -12,7 +12,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.listener.api.ChannelAwareMessageListener;
+import org.springframework.beans.factory.DisposableBean;
+import org.springframework.beans.factory.InitializingBean;
 import vip.toby.rpc.annotation.RPCMethod;
+import vip.toby.rpc.entity.RPCServerType;
 import vip.toby.rpc.entity.ServerStatus;
 
 import java.io.IOException;
@@ -22,35 +25,43 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class RPCServerHandler implements ChannelAwareMessageListener {
+public class RPCServerHandler implements ChannelAwareMessageListener, InitializingBean, DisposableBean {
 
     private final static Logger logger = LoggerFactory.getLogger(RPCServerHandler.class);
 
     private final static Map<String, FastMethod> fastMethodMap = new ConcurrentHashMap<>();
 
-    private Object rpcServer;
-    private String name;
+    private Object rpcServerObject;
+    private String queueName;
     private String type;
 
-    RPCServerHandler(Object rpcServer, String name, String type) {
-        this.rpcServer = rpcServer;
-        this.name = name;
-        this.type = type;
+    RPCServerHandler(Object rpcServerObject, String queueName, RPCServerType rpcServerType) {
+        this.rpcServerObject = rpcServerObject;
+        this.queueName = queueName;
+        this.type = rpcServerType.getName();
+    }
 
+    @Override
+    public void afterPropertiesSet() {
         // 初始化所有接口
-        Class<?> rpcServerClass = rpcServer.getClass();
+        Class<?> rpcServerClass = rpcServerObject.getClass();
         for (Method targetMethod : rpcServerClass.getMethods()) {
             if (targetMethod != null && targetMethod.isAnnotationPresent(RPCMethod.class)) {
                 String methodName = targetMethod.getAnnotation(RPCMethod.class).name();
-                String key = type + "_" + name + "_" + methodName;
+                String key = type + "_" + queueName + "_" + methodName;
                 FastMethod fastMethod = FastClass.create(rpcServerClass).getMethod(targetMethod.getName(), new Class[]{JSONObject.class});
                 if (fastMethod != null) {
                     fastMethodMap.put(key, fastMethod);
-                    logger.info("接口注册成功, " + type + " RPCServer: " + name + ", Method: " + methodName);
+                    logger.info("接口注册成功, " + type + " RPCServer: " + queueName + ", Method: " + methodName);
                 }
             }
         }
-        logger.info(type + " RPCServer: " + name + " 已启动");
+        logger.info(type + " RPCServer: " + queueName + " 已启动");
+    }
+
+    @Override
+    public void destroy() {
+        logger.info(type + " RPCServer: " + queueName + " 已停止");
     }
 
     @Override
@@ -62,7 +73,7 @@ public class RPCServerHandler implements ChannelAwareMessageListener {
             messageProperties = message.getMessageProperties();
             messageStr = new String(message.getBody(), StandardCharsets.UTF_8);
             // 打印
-            logger.info(type + " RPCServer: " + name + " 接收到消息: " + messageStr);
+            logger.info(type + " RPCServer: " + queueName + " 接收到消息: " + messageStr);
             // 构建返回JSON值
             JSONObject resultJson = new JSONObject();
             try {
@@ -104,7 +115,7 @@ public class RPCServerHandler implements ChannelAwareMessageListener {
             // 反馈消息
             channel.basicPublish(messageProperties.getReplyToAddress().getExchangeName(), messageProperties.getReplyToAddress().getRoutingKey(), replyProps, resultJson.toJSONString().getBytes(StandardCharsets.UTF_8));
         } catch (Exception e) {
-            logger.error(type + " RPCServer: " + name + " Exception! Message: " + messageStr);
+            logger.error(type + " RPCServer: " + queueName + " Exception! Message: " + messageStr);
             logger.error(e.getMessage(), e);
         } finally {
             // 确认处理任务
@@ -121,11 +132,11 @@ public class RPCServerHandler implements ChannelAwareMessageListener {
             throw new RuntimeException();
         }
         // 获取当前服务的反射方法调用
-        String key = type + "_" + name + "_" + command;
+        String key = type + "_" + queueName + "_" + command;
         // 通过缓存来优化性能
         FastMethod fastMethod = fastMethodMap.get(key);
         if (fastMethod == null) {
-            logger.error("接口不存在, " + type + " RPCServer: " + name + ", Method: " + command);
+            logger.error("接口不存在, " + type + " RPCServer: " + queueName + ", Method: " + command);
             return;
         }
         // 获取data数据
@@ -134,7 +145,7 @@ public class RPCServerHandler implements ChannelAwareMessageListener {
             throw new RuntimeException();
         }
         // 通过发射来调用方法
-        fastMethod.invoke(rpcServer, new Object[]{data});
+        fastMethod.invoke(rpcServerObject, new Object[]{data});
     }
 
     private JSONObject syncExecute(JSONObject paramData) throws InvocationTargetException {
@@ -144,11 +155,11 @@ public class RPCServerHandler implements ChannelAwareMessageListener {
             throw new RuntimeException();
         }
         // 获取当前服务的反射方法调用
-        String key = type + "_" + name + "_" + command;
+        String key = type + "_" + queueName + "_" + command;
         // 通过缓存来优化性能
         FastMethod fastMethod = fastMethodMap.get(key);
         if (fastMethod == null) {
-            logger.error("接口不存在, " + type + " RPCServer: " + name + ", Method: " + command);
+            logger.error("接口不存在, " + type + " RPCServer: " + queueName + ", Method: " + command);
             return null;
         }
         // 获取data数据
@@ -157,7 +168,7 @@ public class RPCServerHandler implements ChannelAwareMessageListener {
             throw new RuntimeException();
         }
         // 通过反射来调用方法
-        return (JSONObject) fastMethod.invoke(rpcServer, new Object[]{param});
+        return (JSONObject) fastMethod.invoke(rpcServerObject, new Object[]{param});
     }
 
 }

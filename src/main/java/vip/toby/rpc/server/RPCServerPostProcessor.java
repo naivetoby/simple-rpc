@@ -41,9 +41,9 @@ public class RPCServerPostProcessor implements BeanPostProcessor {
 
     @Override
     public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
-        Class<?> rpcClass = bean.getClass();
-        if (rpcClass.getAnnotations() != null && rpcClass.getAnnotations().length > 0) {
-            for (Annotation annotation : rpcClass.getAnnotations()) {
+        Class<?> rpcServerClass = bean.getClass();
+        if (rpcServerClass.getAnnotations() != null && rpcServerClass.getAnnotations().length > 0) {
+            for (Annotation annotation : rpcServerClass.getAnnotations()) {
                 if (annotation instanceof RPCServer) {
                     rpcServerHandler(bean, (RPCServer) annotation);
                 }
@@ -53,7 +53,7 @@ public class RPCServerPostProcessor implements BeanPostProcessor {
     }
 
     // 启动服务
-    private void rpcServerHandler(Object bean, RPCServer rpcServer) {
+    private void rpcServerHandler(Object rpcServerObject, RPCServer rpcServer) {
         String queueName = rpcServer.name();
         for (RPCServerType rpcServerType : rpcServer.type()) {
             switch (rpcServerType) {
@@ -63,14 +63,14 @@ public class RPCServerPostProcessor implements BeanPostProcessor {
                     Queue syncQueue = queue(queueName, rpcServerType, false, params);
                     DirectExchange syncDirectExchange = directExchange(queueName, rpcServerType);
                     binding(queueName, rpcServerType, syncQueue, syncDirectExchange);
-                    RPCServerHandler syncRPCServerHandler = rpcServerHandler(queueName, rpcServerType, rpcServer);
+                    RPCServerHandler syncRPCServerHandler = rpcServerHandler(queueName, rpcServerType, rpcServerObject);
                     simpleMessageListenerContainer(queueName, rpcServerType, syncRPCServerHandler, rpcServer.threadNum());
                     break;
                 case ASYNC:
                     Queue asyncQueue = queue(queueName, rpcServerType, true, null);
                     DirectExchange asyncDirectExchange = directExchange(queueName, rpcServerType);
                     binding(queueName, rpcServerType, asyncQueue, asyncDirectExchange);
-                    RPCServerHandler asyncRPCServerHandler = rpcServerHandler(queueName, rpcServerType, rpcServer);
+                    RPCServerHandler asyncRPCServerHandler = rpcServerHandler(queueName, rpcServerType, rpcServerObject);
                     simpleMessageListenerContainer(queueName, rpcServerType, asyncRPCServerHandler, rpcServer.threadNum());
                     break;
                 default:
@@ -95,8 +95,8 @@ public class RPCServerPostProcessor implements BeanPostProcessor {
     }
 
     // 实例化 RPCServerHandler
-    private RPCServerHandler rpcServerHandler(String queueName, RPCServerType rpcServerType, Object rpcServer) {
-        return registerBean(rpcServerType.getName() + queueName + "RPCServerHandler", RPCServerHandler.class, rpcServer, queueName, rpcServerType.getName());
+    private RPCServerHandler rpcServerHandler(String queueName, RPCServerType rpcServerType, Object rpcServerObject) {
+        return registerBean(rpcServerType.getName() + queueName + "RPCServerHandler", RPCServerHandler.class, rpcServerObject, queueName, rpcServerType);
     }
 
     // 实例化 SimpleMessageListenerContainer
