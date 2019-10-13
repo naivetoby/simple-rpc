@@ -135,6 +135,9 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
         }
     }
 
+    /**
+     * 同步调用
+     */
     private void asyncExecute(JSONObject paramData) throws InvocationTargetException {
         // 获得当前command
         String command = paramData.getString("command");
@@ -158,6 +161,9 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
         fastMethod.invoke(rpcServerObject, new Object[]{data});
     }
 
+    /**
+     * 异步调用
+     */
     private JSONObject syncExecute(JSONObject paramData) throws InvocationTargetException {
         // 获得当前command
         String command = paramData.getString("command");
