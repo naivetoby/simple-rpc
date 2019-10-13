@@ -14,8 +14,9 @@ import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.listener.api.ChannelAwareMessageListener;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
-import vip.toby.rpc.annotation.RPCMethod;
-import vip.toby.rpc.entity.RPCServerType;
+import org.springframework.beans.factory.annotation.Value;
+import vip.toby.rpc.annotation.RpcMethod;
+import vip.toby.rpc.entity.RpcServerType;
 import vip.toby.rpc.entity.ServerStatus;
 
 import java.io.IOException;
@@ -25,17 +26,25 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class RPCServerHandler implements ChannelAwareMessageListener, InitializingBean, DisposableBean {
+/**
+ * RpcServerHandler
+ *
+ * @author toby
+ */
+public class RpcServerHandler implements ChannelAwareMessageListener, InitializingBean, DisposableBean {
 
-    private final static Logger logger = LoggerFactory.getLogger(RPCServerHandler.class);
+    private final static Logger LOGGER = LoggerFactory.getLogger(RpcServerHandler.class);
 
-    private final static Map<String, FastMethod> fastMethodMap = new ConcurrentHashMap<>();
+    private final static Map<String, FastMethod> FAST_METHOD_MAP = new ConcurrentHashMap<>();
+
+    @Value("${spring.rabbitmq.slow-call-time:1000}")
+    private int slowCallTime;
 
     private Object rpcServerObject;
     private String queueName;
     private String type;
 
-    RPCServerHandler(Object rpcServerObject, String queueName, RPCServerType rpcServerType) {
+    RpcServerHandler(Object rpcServerObject, String queueName, RpcServerType rpcServerType) {
         this.rpcServerObject = rpcServerObject;
         this.queueName = queueName;
         this.type = rpcServerType.getName();
@@ -46,22 +55,22 @@ public class RPCServerHandler implements ChannelAwareMessageListener, Initializi
         // 初始化所有接口
         Class<?> rpcServerClass = rpcServerObject.getClass();
         for (Method targetMethod : rpcServerClass.getMethods()) {
-            if (targetMethod != null && targetMethod.isAnnotationPresent(RPCMethod.class)) {
-                String methodName = targetMethod.getAnnotation(RPCMethod.class).name();
+            if (targetMethod != null && targetMethod.isAnnotationPresent(RpcMethod.class)) {
+                String methodName = targetMethod.getAnnotation(RpcMethod.class).name();
                 String key = type + "_" + queueName + "_" + methodName;
                 FastMethod fastMethod = FastClass.create(rpcServerClass).getMethod(targetMethod.getName(), new Class[]{JSONObject.class});
                 if (fastMethod != null) {
-                    fastMethodMap.put(key, fastMethod);
-                    logger.info("接口注册成功, " + type + " RPCServer: " + queueName + ", Method: " + methodName);
+                    FAST_METHOD_MAP.put(key, fastMethod);
+                    LOGGER.info("接口注册成功, " + type + " RPCServer: " + queueName + ", Method: " + methodName);
                 }
             }
         }
-        logger.info(type + " RPCServer: " + queueName + " 已启动");
+        LOGGER.info(type + " RPCServer: " + queueName + " 已启动");
     }
 
     @Override
     public void destroy() {
-        logger.info(type + " RPCServer: " + queueName + " 已停止");
+        LOGGER.info(type + " RPCServer: " + queueName + " 已停止");
     }
 
     @Override
@@ -73,14 +82,14 @@ public class RPCServerHandler implements ChannelAwareMessageListener, Initializi
             messageProperties = message.getMessageProperties();
             messageStr = new String(message.getBody(), StandardCharsets.UTF_8);
             // 打印
-            logger.info(type + " RPCServer: " + queueName + " 接收到消息: " + messageStr);
+            LOGGER.info(type + " RPCServer: " + queueName + " 接收到消息: " + messageStr);
             // 构建返回JSON值
             JSONObject resultJson = new JSONObject();
             try {
                 // 组装参数json
                 JSONObject paramData = JSON.parseObject(messageStr);
                 // 异步执行任务
-                if ("async".equalsIgnoreCase(type)) {
+                if (RpcServerType.ASYNC.getName().equalsIgnoreCase(type)) {
                     asyncExecute(paramData);
                     return;
                 }
@@ -89,8 +98,9 @@ public class RPCServerHandler implements ChannelAwareMessageListener, Initializi
                 JSONObject data = syncExecute(paramData);
                 if (data != null) {
                     double offset = System.currentTimeMillis() - start;
-                    if (offset > 1000) {
-                        logger.warn("同步调用时间过长, 共耗时: " + offset + "ms, paramData: " + paramData);
+                    LOGGER.info("耗时: " + offset + "ms, paramData: " + paramData);
+                    if (offset > slowCallTime) {
+                        LOGGER.warn("同步调用时间过长, 共耗时: " + offset + "ms, paramData: " + paramData);
                     }
                     // 修改状态
                     serverStatus = ServerStatus.SUCCESS;
@@ -101,11 +111,11 @@ public class RPCServerHandler implements ChannelAwareMessageListener, Initializi
             } catch (InvocationTargetException e) {
                 // 获取目标异常
                 Throwable t = e.getTargetException();
-                logger.error("Method Invoke Target Exception! Message: " + messageStr);
-                logger.error(t.getMessage(), t);
+                LOGGER.error("Method Invoke Target Exception! Message: " + messageStr);
+                LOGGER.error(t.getMessage(), t);
             } catch (Exception e) {
-                logger.error("Method Invoke Exception! Message: " + messageStr);
-                logger.error(e.getMessage(), e);
+                LOGGER.error("Method Invoke Exception! Message: " + messageStr);
+                LOGGER.error(e.getMessage(), e);
             }
             // 状态设置
             resultJson.put("status", serverStatus.getStatus());
@@ -115,8 +125,8 @@ public class RPCServerHandler implements ChannelAwareMessageListener, Initializi
             // 反馈消息
             channel.basicPublish(messageProperties.getReplyToAddress().getExchangeName(), messageProperties.getReplyToAddress().getRoutingKey(), replyProps, resultJson.toJSONString().getBytes(StandardCharsets.UTF_8));
         } catch (Exception e) {
-            logger.error(type + " RPCServer: " + queueName + " Exception! Message: " + messageStr);
-            logger.error(e.getMessage(), e);
+            LOGGER.error(type + " RPCServer: " + queueName + " Exception! Message: " + messageStr);
+            LOGGER.error(e.getMessage(), e);
         } finally {
             // 确认处理任务
             if (messageProperties != null) {
@@ -134,9 +144,9 @@ public class RPCServerHandler implements ChannelAwareMessageListener, Initializi
         // 获取当前服务的反射方法调用
         String key = type + "_" + queueName + "_" + command;
         // 通过缓存来优化性能
-        FastMethod fastMethod = fastMethodMap.get(key);
+        FastMethod fastMethod = FAST_METHOD_MAP.get(key);
         if (fastMethod == null) {
-            logger.error("接口不存在, " + type + " RPCServer: " + queueName + ", Method: " + command);
+            LOGGER.error("接口不存在, " + type + " RPCServer: " + queueName + ", Method: " + command);
             return;
         }
         // 获取data数据
@@ -157,9 +167,9 @@ public class RPCServerHandler implements ChannelAwareMessageListener, Initializi
         // 获取当前服务的反射方法调用
         String key = type + "_" + queueName + "_" + command;
         // 通过缓存来优化性能
-        FastMethod fastMethod = fastMethodMap.get(key);
+        FastMethod fastMethod = FAST_METHOD_MAP.get(key);
         if (fastMethod == null) {
-            logger.error("接口不存在, " + type + " RPCServer: " + queueName + ", Method: " + command);
+            LOGGER.error("接口不存在, " + type + " RPCServer: " + queueName + ", Method: " + command);
             return null;
         }
         // 获取data数据

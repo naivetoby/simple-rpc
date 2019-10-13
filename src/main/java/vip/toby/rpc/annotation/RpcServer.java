@@ -1,17 +1,22 @@
 package vip.toby.rpc.annotation;
 
 import org.springframework.stereotype.Component;
-import vip.toby.rpc.entity.RPCServerType;
+import vip.toby.rpc.entity.RpcServerType;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/**
+ * RpcServer
+ *
+ * @author toby
+ */
 @Target({ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 @Component
-public @interface RPCServer {
+public @interface RpcServer {
 
     String[] value() default "";
 
@@ -21,5 +26,5 @@ public @interface RPCServer {
 
     int threadNum() default 1;
 
-    RPCServerType[] type() default {RPCServerType.SYNC};
+    RpcServerType[] type() default {RpcServerType.SYNC};
 }

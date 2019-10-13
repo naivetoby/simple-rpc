@@ -2,6 +2,8 @@ package vip.toby.rpc.entity;
 
 /**
  * RPC调用状态码
+ *
+ * @author toby
  */
 public enum ServerStatus {
 

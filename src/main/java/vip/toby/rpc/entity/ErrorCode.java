@@ -2,6 +2,8 @@ package vip.toby.rpc.entity;
 
 /**
  * HTTP请求错误码
+ *
+ * @author toby
  */
 public enum ErrorCode {
 
@@ -49,4 +51,5 @@ public enum ErrorCode {
         }
         return INTERNAL_SERVER_ERROR;
     }
+
 }

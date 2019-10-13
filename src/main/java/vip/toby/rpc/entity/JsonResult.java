@@ -4,8 +4,10 @@ import com.alibaba.fastjson.JSONObject;
 
 /**
  * 构建返回的json对象
+ *
+ * @author toby
  */
-public class JSONResult {
+public class JsonResult {
 
     /**
      * 状态

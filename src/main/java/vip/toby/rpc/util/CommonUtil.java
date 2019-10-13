@@ -5,12 +5,19 @@ import org.slf4j.LoggerFactory;
 
 import java.util.UUID;
 
+/**
+ * 工具类
+ *
+ * @author toby
+ */
 public class CommonUtil {
 
-    private final static Logger logger = LoggerFactory.getLogger(CommonUtil.class);
+    private final static Logger LOGGER = LoggerFactory.getLogger(CommonUtil.class);
 
-    // 获得UUID
-    public static String getUUID() {
+    /**
+     * 获得UUID
+     */
+    public static String getUuid() {
         return UUID.randomUUID().toString().replace("-", "");
     }
 

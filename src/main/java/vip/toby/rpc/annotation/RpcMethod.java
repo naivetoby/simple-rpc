@@ -5,9 +5,14 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/**
+ * RpcMethod
+ *
+ * @author toby
+ */
 @Target({ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
-public @interface RPCMethod {
+public @interface RpcMethod {
 
     String name();
 }

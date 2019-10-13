@@ -2,6 +2,8 @@ package vip.toby.rpc.entity;
 
 /**
  * 业务执行状态码
+ *
+ * @author toby
  */
 public enum OperateStatus {
 
