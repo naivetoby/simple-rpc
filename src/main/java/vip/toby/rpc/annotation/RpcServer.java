@@ -3,10 +3,7 @@ package vip.toby.rpc.annotation;
 import org.springframework.stereotype.Component;
 import vip.toby.rpc.entity.RpcServerType;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import java.lang.annotation.*;
 
 /**
  * RpcServer
@@ -15,6 +12,7 @@ import java.lang.annotation.Target;
  */
 @Target({ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
+@Documented
 @Component
 public @interface RpcServer {
 
