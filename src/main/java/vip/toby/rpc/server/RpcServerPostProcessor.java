@@ -29,7 +29,6 @@ import java.util.Map;
  *
  * @author toby
  */
-@ConditionalOnProperty(prefix = "simple-rpc", name = "mode", havingValue = "server")
 @Component
 public class RpcServerPostProcessor implements BeanPostProcessor {
 

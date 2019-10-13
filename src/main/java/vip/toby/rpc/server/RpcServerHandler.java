@@ -15,7 +15,7 @@ import org.springframework.amqp.rabbit.listener.api.ChannelAwareMessageListener;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Value;
-import vip.toby.rpc.annotation.RpcMethod;
+import vip.toby.rpc.annotation.RpcServerMethod;
 import vip.toby.rpc.entity.RpcServerType;
 import vip.toby.rpc.entity.ServerStatus;
 
@@ -55,8 +55,8 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
         // 初始化所有接口
         Class<?> rpcServerClass = rpcServerObject.getClass();
         for (Method targetMethod : rpcServerClass.getMethods()) {
-            if (targetMethod != null && targetMethod.isAnnotationPresent(RpcMethod.class)) {
-                String methodName = targetMethod.getAnnotation(RpcMethod.class).name();
+            if (targetMethod != null && targetMethod.isAnnotationPresent(RpcServerMethod.class)) {
+                String methodName = targetMethod.getAnnotation(RpcServerMethod.class).name();
                 String key = type + "_" + queueName + "_" + methodName;
                 FastMethod fastMethod = FastClass.create(rpcServerClass).getMethod(targetMethod.getName(), new Class[]{JSONObject.class});
                 if (fastMethod != null) {
