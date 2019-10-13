@@ -1,0 +1,7 @@
+# IntelliJ project files
+.idea/
+target/
+logs/
+*.iml
+*.DS_Store
+
