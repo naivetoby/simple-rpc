@@ -20,7 +20,7 @@ public @interface RpcServer {
 
     String name();
 
-    int xMessageTTL() default 10000;
+    int xMessageTTL() default 1000;
 
     int threadNum() default 1;
 
