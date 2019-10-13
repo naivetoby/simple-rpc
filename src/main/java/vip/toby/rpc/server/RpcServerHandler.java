@@ -41,12 +41,12 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
     private int slowCallTime;
 
     private Object rpcServerObject;
-    private String queueName;
+    private String name;
     private String type;
 
-    RpcServerHandler(Object rpcServerObject, String queueName, RpcServerType rpcServerType) {
+    RpcServerHandler(Object rpcServerObject, String name, RpcServerType rpcServerType) {
         this.rpcServerObject = rpcServerObject;
-        this.queueName = queueName;
+        this.name = name;
         this.type = rpcServerType.getName();
     }
 
@@ -57,20 +57,20 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
         for (Method targetMethod : rpcServerClass.getMethods()) {
             if (targetMethod != null && targetMethod.isAnnotationPresent(RpcServerMethod.class)) {
                 String methodName = targetMethod.getAnnotation(RpcServerMethod.class).name();
-                String key = type + "_" + queueName + "_" + methodName;
+                String key = type + "_" + name + "_" + methodName;
                 FastMethod fastMethod = FastClass.create(rpcServerClass).getMethod(targetMethod.getName(), new Class[]{JSONObject.class});
                 if (fastMethod != null) {
                     FAST_METHOD_MAP.put(key, fastMethod);
-                    LOGGER.info("接口注册成功, " + type + " RPCServer: " + queueName + ", Method: " + methodName);
+                    LOGGER.info("接口注册成功, " + type + " RPCServer: " + name + ", Method: " + methodName);
                 }
             }
         }
-        LOGGER.info(type + " RPCServer: " + queueName + " 已启动");
+        LOGGER.info(type + " RPCServer: " + name + " 已启动");
     }
 
     @Override
     public void destroy() {
-        LOGGER.info(type + " RPCServer: " + queueName + " 已停止");
+        LOGGER.info(type + " RPCServer: " + name + " 已停止");
     }
 
     @Override
@@ -82,7 +82,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
             messageProperties = message.getMessageProperties();
             messageStr = new String(message.getBody(), StandardCharsets.UTF_8);
             // 打印
-            LOGGER.info(type + " RPCServer: " + queueName + " 接收到消息: " + messageStr);
+            LOGGER.info(type + " RPCServer: " + name + " 接收到消息: " + messageStr);
             // 构建返回JSON值
             JSONObject resultJson = new JSONObject();
             try {
@@ -125,7 +125,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
             // 反馈消息
             channel.basicPublish(messageProperties.getReplyToAddress().getExchangeName(), messageProperties.getReplyToAddress().getRoutingKey(), replyProps, resultJson.toJSONString().getBytes(StandardCharsets.UTF_8));
         } catch (Exception e) {
-            LOGGER.error(type + " RPCServer: " + queueName + " Exception! Message: " + messageStr);
+            LOGGER.error(type + " RPCServer: " + name + " Exception! Message: " + messageStr);
             LOGGER.error(e.getMessage(), e);
         } finally {
             // 确认处理任务
@@ -145,11 +145,11 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
             throw new RuntimeException();
         }
         // 获取当前服务的反射方法调用
-        String key = type + "_" + queueName + "_" + command;
+        String key = type + "_" + name + "_" + command;
         // 通过缓存来优化性能
         FastMethod fastMethod = FAST_METHOD_MAP.get(key);
         if (fastMethod == null) {
-            LOGGER.error("接口不存在, " + type + " RPCServer: " + queueName + ", Method: " + command);
+            LOGGER.error("接口不存在, " + type + " RPCServer: " + name + ", Method: " + command);
             return;
         }
         // 获取data数据
@@ -171,11 +171,11 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
             throw new RuntimeException();
         }
         // 获取当前服务的反射方法调用
-        String key = type + "_" + queueName + "_" + command;
+        String key = type + "_" + name + "_" + command;
         // 通过缓存来优化性能
         FastMethod fastMethod = FAST_METHOD_MAP.get(key);
         if (fastMethod == null) {
-            LOGGER.error("接口不存在, " + type + " RPCServer: " + queueName + ", Method: " + command);
+            LOGGER.error("接口不存在, " + type + " RPCServer: " + name + ", Method: " + command);
             return null;
         }
         // 获取data数据
