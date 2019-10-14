@@ -57,7 +57,13 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
         for (Method targetMethod : rpcServerClass.getMethods()) {
             if (targetMethod != null && targetMethod.isAnnotationPresent(RpcServerMethod.class)) {
                 String methodName = targetMethod.getAnnotation(RpcServerMethod.class).name();
+                if (StringUtils.isBlank(methodName)) {
+                    methodName = targetMethod.getName();
+                }
                 String key = type + "_" + name + "_" + methodName;
+                if (FAST_METHOD_MAP.containsKey(key)) {
+                    throw new RuntimeException("Method: " + methodName + " 重复");
+                }
                 FastMethod fastMethod = FastClass.create(rpcServerClass).getMethod(targetMethod.getName(), new Class[]{JSONObject.class});
                 if (fastMethod != null) {
                     FAST_METHOD_MAP.put(key, fastMethod);
@@ -142,7 +148,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
         // 获得当前command
         String command = paramData.getString("command");
         if (StringUtils.isBlank(command)) {
-            throw new RuntimeException();
+            throw new RuntimeException("Command 参数为空");
         }
         // 获取当前服务的反射方法调用
         String key = type + "_" + name + "_" + command;
@@ -155,7 +161,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
         // 获取data数据
         JSONObject data = paramData.getJSONObject("data");
         if (data == null) {
-            throw new RuntimeException();
+            throw new RuntimeException("Data 参数错误");
         }
         // 通过发射来调用方法
         fastMethod.invoke(rpcServerObject, new Object[]{data});
@@ -168,7 +174,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
         // 获得当前command
         String command = paramData.getString("command");
         if (StringUtils.isBlank(command)) {
-            throw new RuntimeException();
+            throw new RuntimeException("Command 参数为空");
         }
         // 获取当前服务的反射方法调用
         String key = type + "_" + name + "_" + command;
@@ -181,7 +187,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
         // 获取data数据
         JSONObject param = paramData.getJSONObject("data");
         if (param == null) {
-            throw new RuntimeException();
+            throw new RuntimeException("Data 参数错误");
         }
         // 通过反射来调用方法
         return (JSONObject) fastMethod.invoke(rpcServerObject, new Object[]{param});

@@ -88,35 +88,35 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
      * 实例化 Queue
      */
     private Queue queue(String queueName, RpcServerType rpcServerType, boolean durable, Map<String, Object> params) {
-        return registerBean(rpcServerType.getName() + queueName + "_Queue", Queue.class, rpcServerType == RpcServerType.ASYNC ? (queueName + ".async") : queueName, durable, false, rpcServerType == RpcServerType.SYNC, params);
+        return registerBean(rpcServerType.getName() + "_" + queueName + "_Queue", Queue.class, rpcServerType == RpcServerType.ASYNC ? (queueName + ".async") : queueName, durable, false, rpcServerType == RpcServerType.SYNC, params);
     }
 
     /**
      * 实例化 DirectExchange
      */
     private DirectExchange directExchange(String queueName, RpcServerType rpcServerType) {
-        return registerBean(rpcServerType.getName() + queueName + "_DirectExchange", DirectExchange.class, "simple.rpc", true, false);
+        return registerBean(rpcServerType.getName() + "_" + queueName + "_DirectExchange", DirectExchange.class, "simple.rpc", true, false);
     }
 
     /**
      * 实例化 Binding
      */
     private Binding binding(String queueName, RpcServerType rpcServerType, Queue queue, DirectExchange directExchange) {
-        return registerBean(rpcServerType.getName() + queueName + "_Binding", Binding.class, queue.getName(), Binding.DestinationType.QUEUE, directExchange.getName(), queue.getName(), Collections.<String, Object>emptyMap());
+        return registerBean(rpcServerType.getName() + "_" + queueName + "_Binding", Binding.class, queue.getName(), Binding.DestinationType.QUEUE, directExchange.getName(), queue.getName(), Collections.<String, Object>emptyMap());
     }
 
     /**
      * 实例化 RpcServerHandler
      */
     private RpcServerHandler rpcServerHandler(String queueName, RpcServerType rpcServerType, Object rpcServerObject) {
-        return registerBean(rpcServerType.getName() + queueName + "_RpcServerHandler", RpcServerHandler.class, rpcServerObject, queueName, rpcServerType);
+        return registerBean(rpcServerType.getName() + "_" + queueName + "_RpcServerHandler", RpcServerHandler.class, rpcServerObject, queueName, rpcServerType);
     }
 
     /**
      * 实例化 SimpleMessageListenerContainer
      */
     private SimpleMessageListenerContainer simpleMessageListenerContainer(String queueName, RpcServerType rpcServerType, RpcServerHandler handler, int threadNum) {
-        SimpleMessageListenerContainer container = registerBean(rpcServerType.getName() + queueName + "_MessageListenerContainer", SimpleMessageListenerContainer.class, connectionFactory);
+        SimpleMessageListenerContainer container = registerBean(rpcServerType.getName() + "_" + queueName + "_MessageListenerContainer", SimpleMessageListenerContainer.class, connectionFactory);
         container.setQueueNames(rpcServerType == RpcServerType.ASYNC ? (queueName + ".async") : queueName);
         container.setMessageListener(handler);
         container.setAcknowledgeMode(AcknowledgeMode.MANUAL);
@@ -136,7 +136,11 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
         }
         BeanDefinition beanDefinition = beanDefinitionBuilder.getRawBeanDefinition();
         BeanDefinitionRegistry beanFactory = (BeanDefinitionRegistry) applicationContext.getBeanFactory();
+        if (beanFactory.isBeanNameInUse(name)) {
+            throw new RuntimeException("Bean: " + name + " 实例化时发生重复");
+        }
         beanFactory.registerBeanDefinition(name, beanDefinition);
         return applicationContext.getBean(name, clazz);
     }
+
 }
