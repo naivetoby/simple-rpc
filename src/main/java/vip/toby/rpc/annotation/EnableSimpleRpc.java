@@ -1,8 +1,7 @@
 package vip.toby.rpc.annotation;
 
 import org.springframework.context.annotation.Import;
-import vip.toby.rpc.config.RabbitMqConfiguration;
-import vip.toby.rpc.server.RpcBeanPostProcessor;
+import vip.toby.rpc.config.RpcConfiguration;
 
 import java.lang.annotation.*;
 
@@ -14,7 +13,7 @@ import java.lang.annotation.*;
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-@Import({RabbitMqConfiguration.class, RpcBeanPostProcessor.class})
+@Import({RpcConfiguration.class})
 public @interface EnableSimpleRpc {
 
 }
