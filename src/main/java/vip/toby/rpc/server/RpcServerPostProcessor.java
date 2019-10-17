@@ -10,6 +10,8 @@ import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.stereotype.Component;
 import vip.toby.rpc.annotation.RpcServer;
 import vip.toby.rpc.entity.RpcType;
 import vip.toby.rpc.util.RpcUtil;
@@ -24,20 +26,16 @@ import java.util.Map;
  *
  * @author toby
  */
+@Component
 public class RpcServerPostProcessor implements BeanPostProcessor {
 
     @Autowired
     private ConfigurableApplicationContext applicationContext;
-
-    private final ConnectionFactory connectionFactory;
-    private final DirectExchange syncDirectExchange;
-    private final DirectExchange asyncDirectExchange;
-
-    public RpcServerPostProcessor(ConnectionFactory connectionFactory, DirectExchange syncDirectExchange, DirectExchange asyncDirectExchange) {
-        this.connectionFactory = connectionFactory;
-        this.syncDirectExchange = syncDirectExchange;
-        this.asyncDirectExchange = asyncDirectExchange;
-    }
+    @Autowired
+    @Lazy
+    private ConnectionFactory connectionFactory;
+    private DirectExchange syncDirectExchange;
+    private DirectExchange asyncDirectExchange;
 
     @Override
     public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
@@ -95,7 +93,7 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
      * 实例化 Binding
      */
     private Binding binding(String rpcName, RpcType rpcType, Queue queue) {
-        return RpcUtil.registerBean(applicationContext, rpcType.getValue() + "_" + rpcName + "_Binding", Binding.class, queue.getName(), Binding.DestinationType.QUEUE, (rpcType == RpcType.SYNC ? syncDirectExchange : asyncDirectExchange).getName(), queue.getName(), Collections.<String, Object>emptyMap());
+        return RpcUtil.registerBean(applicationContext, rpcType.getValue() + "_" + rpcName + "_Binding", Binding.class, queue.getName(), Binding.DestinationType.QUEUE, getDirectExchange(rpcType).getName(), queue.getName(), Collections.<String, Object>emptyMap());
     }
 
     /**
@@ -117,4 +115,16 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
         return messageListenerContainer;
     }
 
+    private DirectExchange getDirectExchange(RpcType rpcType) {
+        if (rpcType == RpcType.SYNC) {
+            if (syncDirectExchange == null) {
+                syncDirectExchange = RpcUtil.registerBean(applicationContext, "syncDirectExchange", DirectExchange.class, "simple.rpc.sync", true, false);
+            }
+            return syncDirectExchange;
+        }
+        if (asyncDirectExchange == null) {
+            asyncDirectExchange = RpcUtil.registerBean(applicationContext, "asyncDirectExchange", DirectExchange.class, "simple.rpc.async", true, false);
+        }
+        return asyncDirectExchange;
+    }
 }
