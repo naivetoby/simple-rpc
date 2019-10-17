@@ -32,7 +32,7 @@ public class RpcClientProxy implements InvocationHandler, InitializingBean {
 
     @Override
     public void afterPropertiesSet() throws Exception {
-        LOGGER.info(rpcType.getName() + " RPCClient: " + rpcName + " 已实例化");
+        LOGGER.info(this.rpcType.getName() + " RPCClient: " + this.rpcName + " 已实例化");
     }
 
     @Override
@@ -40,14 +40,13 @@ public class RpcClientProxy implements InvocationHandler, InitializingBean {
         if (Object.class.equals(method.getDeclaringClass())) {
             return method.invoke(this, args);
         }
-
         LOGGER.info("调用成功: " + method.getName());
         return null;
     }
 
     @Override
     public String toString() {
-        return rpcName + "_Client";
+        return this.rpcName + "_Client";
     }
 
 }

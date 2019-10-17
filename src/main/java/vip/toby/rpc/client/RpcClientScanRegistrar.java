@@ -12,8 +12,7 @@ import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.support.AbstractBeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.GenericBeanDefinition;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationContextAware;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.EnvironmentAware;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
 import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
@@ -39,24 +38,19 @@ import java.util.UUID;
  * @author toby
  */
 @Component
-public class RpcClientScanRegistrar implements ImportBeanDefinitionRegistrar, ApplicationContextAware, EnvironmentAware {
+public class RpcClientScanRegistrar implements ImportBeanDefinitionRegistrar, EnvironmentAware {
 
-
+    @Autowired
+    private ConfigurableApplicationContext applicationContext;
     @Autowired
     private ConnectionFactory connectionFactory;
 
     private Environment environment;
-    private ApplicationContext applicationContext;
     private DirectExchange syncReplyDirectExchange;
 
     @Override
     public void setEnvironment(Environment environment) {
         this.environment = environment;
-    }
-
-    @Override
-    public void setApplicationContext(ApplicationContext applicationContext) {
-        this.applicationContext = applicationContext;
     }
 
     @Override
