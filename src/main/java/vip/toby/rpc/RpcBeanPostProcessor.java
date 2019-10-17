@@ -20,6 +20,7 @@ import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Component;
 import vip.toby.rpc.annotation.RpcClient;
 import vip.toby.rpc.annotation.RpcServer;
+import vip.toby.rpc.client.RpcClientProxyFactory;
 import vip.toby.rpc.entity.RpcType;
 import vip.toby.rpc.server.RpcServerHandler;
 
@@ -103,24 +104,23 @@ public class RpcBeanPostProcessor implements BeanPostProcessor {
     /**
      * 客户端
      */
-    private void rpcClientSender(Object rpcServerObject, RpcClient rpcClient) {
+    private void rpcClientSender(Object rpcClientObject, RpcClient rpcClient) {
         String rpcName = rpcClient.name();
         RpcType rpcType = rpcClient.type();
         switch (rpcType) {
             case SYNC:
                 RabbitTemplate syncSender = syncSender(rpcName, replyQueue(rpcName, UUID.randomUUID().toString()), rpcClient.replyTimeout(), rpcClient.maxAttempts());
                 replyMessageListenerContainer(rpcName, syncSender);
-
-
+                registerBean(rpcClientObject.getClass().getName(), RpcClientProxyFactory.class, rpcClientObject, rpcType, syncSender);
                 break;
             case ASYNC:
                 RabbitTemplate asyncSender = asyncSender(rpcName);
-
-
+                registerBean(rpcClientObject.getClass().getName(), RpcClientProxyFactory.class, rpcClientObject, rpcType, asyncSender);
                 break;
             default:
                 break;
         }
+
     }
 
     /**
