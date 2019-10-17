@@ -36,7 +36,7 @@ public class RpcClientProxyFactory implements FactoryBean {
 
     @Override
     public Object getObject() throws Exception {
-        return Proxy.newProxyInstance(this.rpcClientInterface.getClassLoader(), new Class[]{this.rpcClientInterface}, new RpcClientProxy(this.rpcName, this.rpcType, this.sender));
+        return Proxy.newProxyInstance(this.rpcClientInterface.getClassLoader(), new Class[]{this.rpcClientInterface}, new RpcClientProxy(this.rpcClientInterface, this.rpcName, this.rpcType, this.sender));
     }
 
     @Override

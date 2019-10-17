@@ -124,21 +124,21 @@ public class RpcClientScanRegistrar implements ImportBeanDefinitionRegistrar, Ap
      * 实例化 replyQueue
      */
     private Queue replyQueue(String rpcName, String rabbitClientId) {
-        return RpcUtil.registerBean(applicationContext, RpcType.SYNC.getValue() + "_" + rpcName + "_ReplyQueue", Queue.class, rpcName + ".reply." + rabbitClientId, true, false, false);
+        return RpcUtil.registerBean(this.applicationContext, RpcType.SYNC.getValue() + "_" + rpcName + "_ReplyQueue", Queue.class, rpcName + ".reply." + rabbitClientId, true, false, false);
     }
 
     /**
      * 实例化 ReplyBinding
      */
     private Binding replyBinding(String rpcName, Queue queue) {
-        return RpcUtil.registerBean(applicationContext, RpcType.SYNC.getValue() + "_" + rpcName + "_ReplyBinding", Binding.class, queue.getName(), Binding.DestinationType.QUEUE, getSyncReplyDirectExchange().getName(), queue.getName(), Collections.<String, Object>emptyMap());
+        return RpcUtil.registerBean(this.applicationContext, RpcType.SYNC.getValue() + "_" + rpcName + "_ReplyBinding", Binding.class, queue.getName(), Binding.DestinationType.QUEUE, getSyncReplyDirectExchange().getName(), queue.getName(), Collections.<String, Object>emptyMap());
     }
 
     /**
      * 实例化 ReplyMessageListenerContainer
      */
     private SimpleMessageListenerContainer replyMessageListenerContainer(String rpcName, RabbitTemplate syncSender) {
-        SimpleMessageListenerContainer replyMessageListenerContainer = RpcUtil.registerBean(applicationContext, RpcType.SYNC.getValue() + "_" + rpcName + "_ReplyMessageListenerContainer", SimpleMessageListenerContainer.class, connectionFactory);
+        SimpleMessageListenerContainer replyMessageListenerContainer = RpcUtil.registerBean(this.applicationContext, RpcType.SYNC.getValue() + "_" + rpcName + "_ReplyMessageListenerContainer", SimpleMessageListenerContainer.class, this.connectionFactory);
         replyMessageListenerContainer.setQueueNames(rpcName);
         replyMessageListenerContainer.setMessageListener(syncSender);
         return replyMessageListenerContainer;
@@ -148,8 +148,8 @@ public class RpcClientScanRegistrar implements ImportBeanDefinitionRegistrar, Ap
      * 实例化 AsyncSender
      */
     private RabbitTemplate asyncSender(String rpcName) {
-        RabbitTemplate asyncSender = RpcUtil.registerBean(applicationContext, RpcType.SYNC.getValue() + "_" + rpcName + "_Sender", RabbitTemplate.class);
-        asyncSender.setConnectionFactory(connectionFactory);
+        RabbitTemplate asyncSender = RpcUtil.registerBean(this.applicationContext, RpcType.SYNC.getValue() + "_" + rpcName + "_Sender", RabbitTemplate.class);
+        asyncSender.setConnectionFactory(this.connectionFactory);
         asyncSender.setDefaultReceiveQueue(rpcName + ".async");
         asyncSender.setRoutingKey(rpcName + ".async");
         return asyncSender;
@@ -163,8 +163,8 @@ public class RpcClientScanRegistrar implements ImportBeanDefinitionRegistrar, Ap
         simpleRetryPolicy.setMaxAttempts(maxAttempts);
         RetryTemplate retryTemplate = new RetryTemplate();
         retryTemplate.setRetryPolicy(simpleRetryPolicy);
-        RabbitTemplate syncSender = RpcUtil.registerBean(applicationContext, RpcType.ASYNC.getValue() + "_" + rpcName + "_Sender", RabbitTemplate.class);
-        syncSender.setConnectionFactory(connectionFactory);
+        RabbitTemplate syncSender = RpcUtil.registerBean(this.applicationContext, RpcType.ASYNC.getValue() + "_" + rpcName + "_Sender", RabbitTemplate.class);
+        syncSender.setConnectionFactory(this.connectionFactory);
         syncSender.setDefaultReceiveQueue(rpcName);
         syncSender.setRoutingKey(rpcName);
         syncSender.setReplyAddress(replyQueue.getName());
@@ -177,10 +177,10 @@ public class RpcClientScanRegistrar implements ImportBeanDefinitionRegistrar, Ap
      * 实例化 SyncReplyDirectExchange
      */
     private DirectExchange getSyncReplyDirectExchange() {
-        if (syncReplyDirectExchange == null) {
-            syncReplyDirectExchange = RpcUtil.registerBean(applicationContext, "syncReplyDirectExchange", DirectExchange.class, "simple.rpc.sync.reply", true, false);
+        if (this.syncReplyDirectExchange == null) {
+            this.syncReplyDirectExchange = RpcUtil.registerBean(this.applicationContext, "syncReplyDirectExchange", DirectExchange.class, "simple.rpc.sync.reply", true, false);
         }
-        return syncReplyDirectExchange;
+        return this.syncReplyDirectExchange;
     }
 
 }
