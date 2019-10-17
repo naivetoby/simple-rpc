@@ -22,5 +22,7 @@ public @interface RpcClient {
 
     int replyTimeout() default 2000;
 
+    int maxAttempts() default 3;
+
     RpcType type() default RpcType.SYNC;
 }

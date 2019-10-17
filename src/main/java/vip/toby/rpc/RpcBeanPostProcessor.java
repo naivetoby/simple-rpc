@@ -15,6 +15,7 @@ import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.retry.policy.SimpleRetryPolicy;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Component;
 import vip.toby.rpc.annotation.RpcClient;
@@ -26,6 +27,7 @@ import java.lang.annotation.Annotation;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * RpcBeanPostProcessor
@@ -39,15 +41,14 @@ public class RpcBeanPostProcessor implements BeanPostProcessor {
     @Lazy
     private ConnectionFactory connectionFactory;
     @Autowired
+    @Lazy
     private DirectExchange syncDirectExchange;
     @Autowired
+    @Lazy
     private DirectExchange syncReplyDirectExchange;
     @Autowired
+    @Lazy
     private DirectExchange asyncDirectExchange;
-    @Autowired
-    private RetryTemplate retryTemplate;
-    @Autowired
-    private String rabbitClientId;
     @Autowired
     private ConfigurableApplicationContext applicationContext;
 
@@ -107,7 +108,7 @@ public class RpcBeanPostProcessor implements BeanPostProcessor {
         RpcType rpcType = rpcClient.type();
         switch (rpcType) {
             case SYNC:
-                RabbitTemplate syncSender = syncSender(rpcName, replyQueue(rpcName), rpcClient.replyTimeout());
+                RabbitTemplate syncSender = syncSender(rpcName, replyQueue(rpcName, UUID.randomUUID().toString()), rpcClient.replyTimeout(), rpcClient.maxAttempts());
                 replyMessageListenerContainer(rpcName, syncSender);
 
 
@@ -147,8 +148,7 @@ public class RpcBeanPostProcessor implements BeanPostProcessor {
      * 实例化 SimpleMessageListenerContainer
      */
     private SimpleMessageListenerContainer messageListenerContainer(String rpcName, RpcType rpcType, Queue queue, RpcServerHandler rpcServerHandler, int threadNum) {
-        SimpleMessageListenerContainer messageListenerContainer = registerBean(rpcType.getValue() + "_" + rpcName + "_MessageListenerContainer", SimpleMessageListenerContainer.class);
-        messageListenerContainer.setConnectionFactory(connectionFactory);
+        SimpleMessageListenerContainer messageListenerContainer = registerBean(rpcType.getValue() + "_" + rpcName + "_MessageListenerContainer", SimpleMessageListenerContainer.class, connectionFactory);
         messageListenerContainer.setQueueNames(queue.getName());
         messageListenerContainer.setMessageListener(rpcServerHandler);
         messageListenerContainer.setAcknowledgeMode(AcknowledgeMode.MANUAL);
@@ -159,7 +159,7 @@ public class RpcBeanPostProcessor implements BeanPostProcessor {
     /**
      * 实例化 replyQueue
      */
-    private Queue replyQueue(String rpcName) {
+    private Queue replyQueue(String rpcName, String rabbitClientId) {
         return registerBean(RpcType.SYNC.getValue() + "_" + rpcName + "_ReplyQueue", Queue.class, rpcName + ".reply." + rabbitClientId);
     }
 
@@ -174,8 +174,7 @@ public class RpcBeanPostProcessor implements BeanPostProcessor {
      * 实例化 ReplyMessageListenerContainer
      */
     private SimpleMessageListenerContainer replyMessageListenerContainer(String rpcName, RabbitTemplate syncSender) {
-        SimpleMessageListenerContainer replyMessageListenerContainer = registerBean(RpcType.SYNC.getValue() + "_" + rpcName + "_ReplyMessageListenerContainer", SimpleMessageListenerContainer.class);
-        replyMessageListenerContainer.setConnectionFactory(connectionFactory);
+        SimpleMessageListenerContainer replyMessageListenerContainer = registerBean(RpcType.SYNC.getValue() + "_" + rpcName + "_ReplyMessageListenerContainer", SimpleMessageListenerContainer.class, connectionFactory);
         replyMessageListenerContainer.setQueueNames(rpcName);
         replyMessageListenerContainer.setMessageListener(syncSender);
         return replyMessageListenerContainer;
@@ -195,7 +194,11 @@ public class RpcBeanPostProcessor implements BeanPostProcessor {
     /**
      * 实例化 SyncSender
      */
-    private RabbitTemplate syncSender(String rpcName, Queue replyQueue, int replyTimeout) {
+    private RabbitTemplate syncSender(String rpcName, Queue replyQueue, int replyTimeout, int maxAttempts) {
+        SimpleRetryPolicy simpleRetryPolicy = new SimpleRetryPolicy();
+        simpleRetryPolicy.setMaxAttempts(maxAttempts);
+        RetryTemplate retryTemplate = new RetryTemplate();
+        retryTemplate.setRetryPolicy(simpleRetryPolicy);
         RabbitTemplate syncSender = registerBean(RpcType.ASYNC.getValue() + "_" + rpcName + "_Sender", RabbitTemplate.class);
         syncSender.setConnectionFactory(connectionFactory);
         syncSender.setDefaultReceiveQueue(rpcName);
