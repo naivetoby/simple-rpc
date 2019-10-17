@@ -18,13 +18,11 @@ public class RpcClientProxy implements InvocationHandler, InitializingBean {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(RpcClientProxy.class);
 
-    private final Class<?> rpcClientInterface;
     private final String rpcName;
     private final RpcType rpcType;
     private final RabbitTemplate sender;
 
-    RpcClientProxy(Class<?> rpcClientInterface, String rpcName, RpcType rpcType, RabbitTemplate sender) {
-        this.rpcClientInterface = rpcClientInterface;
+    RpcClientProxy(String rpcName, RpcType rpcType, RabbitTemplate sender) {
         this.rpcName = rpcName;
         this.rpcType = rpcType;
         this.sender = sender;
@@ -41,13 +39,13 @@ public class RpcClientProxy implements InvocationHandler, InitializingBean {
             return method.invoke(this, args);
         }
 
-
+        LOGGER.info("调用成功: " + method.getName());
         return null;
     }
 
     @Override
     public String toString() {
-        return rpcClientInterface.getName();
+        return rpcName + "_Client";
     }
 
 }
