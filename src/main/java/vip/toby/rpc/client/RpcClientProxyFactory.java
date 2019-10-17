@@ -14,18 +14,20 @@ import java.lang.reflect.Proxy;
 public class RpcClientProxyFactory implements FactoryBean {
 
     private final Class<?> rpcClientInterface;
-    private final RabbitTemplate sender;
+    private final String rpcName;
     private final RpcType rpcType;
+    private final RabbitTemplate sender;
 
-    public RpcClientProxyFactory(Class<?> rpcClientInterface, RabbitTemplate sender, RpcType rpcType) {
+    public RpcClientProxyFactory(Class<?> rpcClientInterface, String rpcName, RpcType rpcType, RabbitTemplate sender) {
         this.rpcClientInterface = rpcClientInterface;
-        this.sender = sender;
+        this.rpcName = rpcName;
         this.rpcType = rpcType;
+        this.sender = sender;
     }
 
     @Override
     public Object getObject() throws Exception {
-        return Proxy.newProxyInstance(rpcClientInterface.getClassLoader(), new Class[]{rpcClientInterface}, new RpcClientProxy(rpcClientInterface, rpcType, sender));
+        return Proxy.newProxyInstance(rpcClientInterface.getClassLoader(), new Class[]{rpcClientInterface}, new RpcClientProxy(rpcClientInterface, rpcName, rpcType, sender));
     }
 
     @Override

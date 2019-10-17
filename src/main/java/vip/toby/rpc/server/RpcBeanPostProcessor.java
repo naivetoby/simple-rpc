@@ -1,4 +1,4 @@
-package vip.toby.rpc;
+package vip.toby.rpc.server;
 
 import org.springframework.amqp.core.AcknowledgeMode;
 import org.springframework.amqp.core.Binding;
@@ -22,7 +22,6 @@ import vip.toby.rpc.annotation.RpcClient;
 import vip.toby.rpc.annotation.RpcServer;
 import vip.toby.rpc.client.RpcClientProxyFactory;
 import vip.toby.rpc.entity.RpcType;
-import vip.toby.rpc.server.RpcServerHandler;
 
 import java.lang.annotation.Annotation;
 import java.util.Collections;
@@ -64,10 +63,7 @@ public class RpcBeanPostProcessor implements BeanPostProcessor {
         if (rpcServerClass.getAnnotations() != null && rpcServerClass.getAnnotations().length > 0) {
             for (Annotation annotation : rpcServerClass.getAnnotations()) {
                 if (annotation instanceof RpcServer) {
-                    rpcServerHandler(bean, (RpcServer) annotation);
-                }
-                if (annotation instanceof RpcClient) {
-                    rpcClientSender(bean, (RpcClient) annotation);
+                    rpcServerStart(bean, (RpcServer) annotation);
                 }
             }
         }
@@ -75,9 +71,9 @@ public class RpcBeanPostProcessor implements BeanPostProcessor {
     }
 
     /**
-     * 服务端
+     * 启动服务端监听
      */
-    private void rpcServerHandler(Object rpcServerObject, RpcServer rpcServer) {
+    private void rpcServerStart(Object rpcServerBean, RpcServer rpcServer) {
         String rpcName = rpcServer.name();
         for (RpcType rpcType : rpcServer.type()) {
             switch (rpcType) {
@@ -86,13 +82,13 @@ public class RpcBeanPostProcessor implements BeanPostProcessor {
                     params.put("x-message-ttl", rpcServer.xMessageTTL());
                     Queue syncQueue = queue(rpcName, rpcType, false, params);
                     binding(rpcName, rpcType, syncQueue);
-                    RpcServerHandler syncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerObject);
+                    RpcServerHandler syncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean);
                     messageListenerContainer(rpcName, rpcType, syncQueue, syncServerHandler, rpcServer.threadNum());
                     break;
                 case ASYNC:
                     Queue asyncQueue = queue(rpcName, rpcType, true, null);
                     binding(rpcName, rpcType, asyncQueue);
-                    RpcServerHandler asyncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerObject);
+                    RpcServerHandler asyncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean);
                     messageListenerContainer(rpcName, rpcType, asyncQueue, asyncServerHandler, rpcServer.threadNum());
                     break;
                 default:
@@ -104,18 +100,18 @@ public class RpcBeanPostProcessor implements BeanPostProcessor {
     /**
      * 客户端
      */
-    private void rpcClientSender(Object rpcClientObject, RpcClient rpcClient) {
+    private void rpcClientSender(Class<?> rpcClientInterface, RpcClient rpcClient) {
         String rpcName = rpcClient.name();
         RpcType rpcType = rpcClient.type();
         switch (rpcType) {
             case SYNC:
                 RabbitTemplate syncSender = syncSender(rpcName, replyQueue(rpcName, UUID.randomUUID().toString()), rpcClient.replyTimeout(), rpcClient.maxAttempts());
                 replyMessageListenerContainer(rpcName, syncSender);
-                registerBean(rpcClientObject.getClass().getName(), RpcClientProxyFactory.class, rpcClientObject, rpcType, syncSender);
+                registerBean(rpcClientInterface.getName(), RpcClientProxyFactory.class, rpcClientInterface, rpcName, rpcType, syncSender);
                 break;
             case ASYNC:
                 RabbitTemplate asyncSender = asyncSender(rpcName);
-                registerBean(rpcClientObject.getClass().getName(), RpcClientProxyFactory.class, rpcClientObject, rpcType, asyncSender);
+                registerBean(rpcClientInterface.getName(), RpcClientProxyFactory.class, rpcClientInterface, rpcName, rpcType, asyncSender);
                 break;
             default:
                 break;
@@ -140,8 +136,8 @@ public class RpcBeanPostProcessor implements BeanPostProcessor {
     /**
      * 实例化 RpcServerHandler
      */
-    private RpcServerHandler rpcServerHandler(String rpcName, RpcType rpcType, Object rpcServerObject) {
-        return registerBean(rpcType.getValue() + "_" + rpcName + "_RpcServerHandler", RpcServerHandler.class, rpcServerObject, rpcName, rpcType);
+    private RpcServerHandler rpcServerHandler(String rpcName, RpcType rpcType, Object rpcServerBean) {
+        return registerBean(rpcType.getValue() + "_" + rpcName + "_RpcServerHandler", RpcServerHandler.class, rpcServerBean, rpcName, rpcType);
     }
 
     /**

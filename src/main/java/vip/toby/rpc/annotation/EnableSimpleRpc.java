@@ -2,7 +2,7 @@ package vip.toby.rpc.annotation;
 
 import org.springframework.context.annotation.Import;
 import vip.toby.rpc.config.RabbitMqConfiguration;
-import vip.toby.rpc.RpcBeanPostProcessor;
+import vip.toby.rpc.server.RpcBeanPostProcessor;
 
 import java.lang.annotation.*;
 

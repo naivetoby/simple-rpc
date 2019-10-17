@@ -1,6 +1,9 @@
 package vip.toby.rpc.client;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.InitializingBean;
 import vip.toby.rpc.entity.RpcType;
 
 import java.lang.reflect.InvocationHandler;
@@ -11,21 +14,25 @@ import java.lang.reflect.Method;
  *
  * @author toby
  */
-public class RpcClientProxy implements InvocationHandler {
+public class RpcClientProxy implements InvocationHandler, InitializingBean {
 
-    private final static String TO_STRING = "toString";
-    private final static String HASH_CODE = "hashCode";
-    private final static String EQUALS = "equals";
-    private final static String CLONE = "clone";
+    private final static Logger LOGGER = LoggerFactory.getLogger(RpcClientProxy.class);
 
     private final Class<?> rpcClientInterface;
-    private final RabbitTemplate sender;
+    private final String rpcName;
     private final RpcType rpcType;
+    private final RabbitTemplate sender;
 
-    public RpcClientProxy(Class<?> rpcClientInterface, RpcType rpcType, RabbitTemplate sender) {
+    RpcClientProxy(Class<?> rpcClientInterface, String rpcName, RpcType rpcType, RabbitTemplate sender) {
         this.rpcClientInterface = rpcClientInterface;
+        this.rpcName = rpcName;
         this.rpcType = rpcType;
         this.sender = sender;
+    }
+
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        LOGGER.info(rpcType.getName() + " RPCClient: " + rpcName + " 已实例化");
     }
 
     @Override
