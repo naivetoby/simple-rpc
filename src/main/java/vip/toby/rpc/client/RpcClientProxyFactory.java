@@ -18,7 +18,7 @@ public class RpcClientProxyFactory implements FactoryBean {
     private RpcType rpcType;
     private RabbitTemplate sender;
 
-    public void setRpcClientInterface(Class<?> rpcClientInterface) {
+    public void setRpcClientInterfaceName(Class<?> rpcClientInterface) {
         this.rpcClientInterface = rpcClientInterface;
     }
 
@@ -48,4 +48,5 @@ public class RpcClientProxyFactory implements FactoryBean {
     public boolean isSingleton() {
         return true;
     }
+
 }

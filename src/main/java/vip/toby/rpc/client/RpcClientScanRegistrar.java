@@ -12,7 +12,8 @@ import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.support.AbstractBeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.GenericBeanDefinition;
-import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.EnvironmentAware;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
 import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
@@ -38,14 +39,14 @@ import java.util.UUID;
  * @author toby
  */
 @Component
-public class RpcClientScanRegistrar implements ImportBeanDefinitionRegistrar, EnvironmentAware {
+public class RpcClientScanRegistrar implements ImportBeanDefinitionRegistrar, ApplicationContextAware, EnvironmentAware {
 
-    @Autowired
-    private ConfigurableApplicationContext applicationContext;
+
     @Autowired
     private ConnectionFactory connectionFactory;
 
     private Environment environment;
+    private ApplicationContext applicationContext;
     private DirectExchange syncReplyDirectExchange;
 
     @Override
@@ -54,18 +55,19 @@ public class RpcClientScanRegistrar implements ImportBeanDefinitionRegistrar, En
     }
 
     @Override
+    public void setApplicationContext(ApplicationContext applicationContext) {
+        this.applicationContext = applicationContext;
+    }
+
+    @Override
     public void registerBeanDefinitions(AnnotationMetadata metadata, BeanDefinitionRegistry registry) {
-        // Get the MyInterfaceScan annotation attributes
         Map<String, Object> annotationAttributes = metadata.getAnnotationAttributes(EnableSimpleRpc.class.getCanonicalName());
         if (annotationAttributes != null) {
             String[] basePackages = (String[]) annotationAttributes.get("clientPath");
             if (basePackages.length == 0) {
-                // If value attribute is not set, fallback to the package of the annotated class
                 basePackages = new String[]{((StandardAnnotationMetadata) metadata).getIntrospectedClass().getPackage().getName()};
             }
-            // using these packages, scan for interface annotated with MyCustomBean
             ClassPathScanningCandidateComponentProvider provider = new ClassPathScanningCandidateComponentProvider(false, this.environment) {
-                // Override isCandidateComponent to only scan for interface
                 @Override
                 protected boolean isCandidateComponent(AnnotatedBeanDefinition beanDefinition) {
                     AnnotationMetadata metadata = beanDefinition.getMetadata();
@@ -73,27 +75,31 @@ public class RpcClientScanRegistrar implements ImportBeanDefinitionRegistrar, En
                 }
             };
             provider.addIncludeFilter(new AnnotationTypeFilter(RpcClient.class));
-            // Scan all packages
             for (String basePackage : basePackages) {
-                GenericBeanDefinition definition;
                 for (BeanDefinition beanDefinition : provider.findCandidateComponents(basePackage)) {
-                    definition = (GenericBeanDefinition) beanDefinition;
-                    Class<?> rpcClientInterface = Class.forName(definition.getBeanClassName());
-                    RpcClient rpcClient = rpcClientInterface.getAnnotation(RpcClient.class);
-                    String rpcName = rpcClient.name();
-                    RpcType rpcType = rpcClient.type();
-                    // 获取真实接口class，并作为构造方法的参数
-                    definition.getConstructorArgumentValues().addGenericArgumentValue(rpcClientInterface);
-                    // 修改类为 RpcClientProxyFactory
-                    definition.setBeanClass(RpcClientProxyFactory.class);
-                    // 注入值
-                    definition.getPropertyValues().add("rpcClientInterface", rpcClientInterface);
-                    definition.getPropertyValues().add("rpcName", rpcName);
-                    definition.getPropertyValues().add("rpcType", rpcType);
-                    definition.getPropertyValues().add("sender", rpcClientSender(rpcClient));
-                    // 采用按照类型注入的方式
-                    definition.setAutowireMode(AbstractBeanDefinition.AUTOWIRE_BY_TYPE);
-                    registry.registerBeanDefinition(definition.getBeanClassName(), definition);
+                    GenericBeanDefinition rpcClientProxy = new GenericBeanDefinition(beanDefinition);
+                    Class<?> rpcClientInterface = null;
+                    try {
+                        rpcClientInterface = rpcClientProxy.resolveBeanClass(rpcClientProxy.getClass().getClassLoader());
+                        RpcClient rpcClient = rpcClientProxy.getBeanClass().getAnnotation(RpcClient.class);
+                        String rpcName = rpcClient.name();
+                        RpcType rpcType = rpcClient.type();
+                        // 获取真实接口class，并作为构造方法的参数
+                        rpcClientProxy.getConstructorArgumentValues().addGenericArgumentValue(rpcClientInterface);
+                        // 修改类为 RpcClientProxyFactory
+                        rpcClientProxy.setBeanClass(RpcClientProxyFactory.class);
+                        // 注入值
+                        rpcClientProxy.getPropertyValues().add("rpcClientInterface", rpcClientInterface);
+                        rpcClientProxy.getPropertyValues().add("rpcName", rpcName);
+                        rpcClientProxy.getPropertyValues().add("rpcType", rpcType);
+                        rpcClientProxy.getPropertyValues().add("sender", rpcClientSender(rpcClient));
+                        // 采用按照类型注入的方式
+                        rpcClientProxy.setAutowireMode(AbstractBeanDefinition.AUTOWIRE_BY_TYPE);
+                        // 注入到spring
+                        registry.registerBeanDefinition(beanDefinition.getBeanClassName(), rpcClientProxy);
+                    } catch (ClassNotFoundException e) {
+                        e.printStackTrace();
+                    }
                 }
             }
         }
