@@ -63,7 +63,7 @@ public class RpcClientScanner {
      * 实例化 replyQueue
      */
     private Queue replyQueue(String rpcName, String rabbitClientId) {
-        return RpcUtil.registerBean(applicationContext, RpcType.SYNC.getValue() + "_" + rpcName + "_ReplyQueue", Queue.class, rpcName + ".reply." + rabbitClientId);
+        return RpcUtil.registerBean(applicationContext, RpcType.SYNC.getValue() + "_" + rpcName + "_ReplyQueue", Queue.class, rpcName + ".reply." + rabbitClientId, true, false, false);
     }
 
     /**

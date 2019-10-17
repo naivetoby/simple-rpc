@@ -86,7 +86,7 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
      * 实例化 Queue
      */
     private Queue queue(String rpcName, RpcType rpcType, boolean durable, Map<String, Object> params) {
-        return RpcUtil.registerBean(applicationContext, rpcType.getValue() + "_" + rpcName + "_Queue", Queue.class, rpcType == RpcType.ASYNC ? (rpcName + ".async") : rpcName, durable, false, rpcType == RpcType.SYNC, params);
+        return RpcUtil.registerBean(applicationContext, rpcType.getValue() + "_" + rpcName + "_Queue", Queue.class, rpcType == RpcType.ASYNC ? (rpcName + ".async") : rpcName, durable, false, false, params);
     }
 
     /**
