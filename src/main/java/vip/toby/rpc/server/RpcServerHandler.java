@@ -16,7 +16,7 @@ import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Value;
 import vip.toby.rpc.annotation.RpcServerMethod;
-import vip.toby.rpc.entity.RpcServerType;
+import vip.toby.rpc.entity.RpcType;
 import vip.toby.rpc.entity.ServerStatus;
 
 import java.io.IOException;
@@ -44,10 +44,10 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
     private String name;
     private String type;
 
-    RpcServerHandler(Object rpcServerObject, String name, RpcServerType rpcServerType) {
+    RpcServerHandler(Object rpcServerObject, String name, RpcType rpcType) {
         this.rpcServerObject = rpcServerObject;
         this.name = name;
-        this.type = rpcServerType.getName();
+        this.type = rpcType.getName();
     }
 
     @Override
@@ -95,7 +95,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                 // 组装参数json
                 JSONObject paramData = JSON.parseObject(messageStr);
                 // 异步执行任务
-                if (RpcServerType.ASYNC.getName().equalsIgnoreCase(type)) {
+                if (RpcType.ASYNC.getName().equalsIgnoreCase(type)) {
                     asyncExecute(paramData);
                     return;
                 }

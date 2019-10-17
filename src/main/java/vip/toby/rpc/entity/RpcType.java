@@ -1,23 +1,25 @@
 package vip.toby.rpc.entity;
 
 /**
- * 服务器调用类型
+ * 调用类型
  *
  * @author toby
  */
 
-public enum RpcServerType {
+public enum RpcType {
 
     // 同步
-    SYNC(0, "SYNC"),
+    SYNC(0, "SYNC", "同步"),
     // 异步
-    ASYNC(1, "ASYNC");
+    ASYNC(1, "ASYNC", "异步");
 
     private int type;
+    private String value;
     private String name;
 
-    RpcServerType(int type, String name) {
+    RpcType(int type, String value, String name) {
         this.type = type;
+        this.value = value;
         this.name = name;
     }
 
@@ -25,15 +27,19 @@ public enum RpcServerType {
         return type;
     }
 
+    public String getValue() {
+        return value;
+    }
+
     public String getName() {
         return name;
     }
 
-    public static RpcServerType getRpcServerType(Integer type) {
+    public static RpcType getRpcType(Integer type) {
         if (type == null) {
             return SYNC;
         }
-        for (RpcServerType e : RpcServerType.values()) {
+        for (RpcType e : RpcType.values()) {
             if (e.type == type) {
                 return e;
             }

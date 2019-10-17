@@ -6,7 +6,7 @@ import vip.toby.rpc.entity.RpcType;
 import java.lang.annotation.*;
 
 /**
- * RpcServer
+ * RpcClient
  *
  * @author toby
  */
@@ -14,15 +14,13 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 @Component
-public @interface RpcServer {
+public @interface RpcClient {
 
     String[] value() default "";
 
     String name();
 
-    int xMessageTTL() default 1000;
+    int replyTimeout() default 2000;
 
-    int threadNum() default 1;
-
-    RpcType[] type() default {RpcType.SYNC, RpcType.ASYNC};
+    RpcType type() default RpcType.SYNC;
 }
