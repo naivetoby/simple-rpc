@@ -41,7 +41,7 @@ public class RpcBeanPostProcessor implements BeanPostProcessor {
     @Autowired
     private DirectExchange syncDirectExchange;
     @Autowired
-    private DirectExchange replyDirectExchange;
+    private DirectExchange syncReplyDirectExchange;
     @Autowired
     private DirectExchange asyncDirectExchange;
     @Autowired
@@ -108,7 +108,7 @@ public class RpcBeanPostProcessor implements BeanPostProcessor {
         switch (rpcType) {
             case SYNC:
                 RabbitTemplate syncSender = syncSender(rpcName, replyQueue(rpcName), rpcClient.replyTimeout());
-                replyMessageListenerContainer(rpcName,syncSender);
+                replyMessageListenerContainer(rpcName, syncSender);
 
 
                 break;
@@ -167,7 +167,7 @@ public class RpcBeanPostProcessor implements BeanPostProcessor {
      * 实例化 ReplyBinding
      */
     private Binding replyBinding(String rpcName, Queue queue) {
-        return registerBean(RpcType.SYNC.getValue() + "_" + rpcName + "_ReplyBinding", Binding.class, queue.getName(), Binding.DestinationType.QUEUE, replyDirectExchange.getName(), queue.getName(), Collections.<String, Object>emptyMap());
+        return registerBean(RpcType.SYNC.getValue() + "_" + rpcName + "_ReplyBinding", Binding.class, queue.getName(), Binding.DestinationType.QUEUE, syncReplyDirectExchange.getName(), queue.getName(), Collections.<String, Object>emptyMap());
     }
 
     /**
