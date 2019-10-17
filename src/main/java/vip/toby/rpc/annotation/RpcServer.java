@@ -13,7 +13,6 @@ import java.lang.annotation.*;
 @Target({ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-@Component
 public @interface RpcServer {
 
     String[] value() default "";

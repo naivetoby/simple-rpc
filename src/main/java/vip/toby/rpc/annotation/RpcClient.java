@@ -1,6 +1,5 @@
 package vip.toby.rpc.annotation;
 
-import org.springframework.stereotype.Component;
 import vip.toby.rpc.entity.RpcType;
 
 import java.lang.annotation.*;
@@ -13,7 +12,6 @@ import java.lang.annotation.*;
 @Target({ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-@Component
 public @interface RpcClient {
 
     String[] value() default "";

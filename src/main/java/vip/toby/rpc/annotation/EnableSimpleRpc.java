@@ -1,9 +1,8 @@
 package vip.toby.rpc.annotation;
 
 import org.springframework.context.annotation.Import;
-import vip.toby.rpc.client.RpcClientScanRegistrar;
+import vip.toby.rpc.scan.RpcScanDefinitionRegistrar;
 import vip.toby.rpc.config.RabbitMqConfiguration;
-import vip.toby.rpc.server.RpcServerPostProcessor;
 
 import java.lang.annotation.*;
 
@@ -15,8 +14,8 @@ import java.lang.annotation.*;
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-@Import({RabbitMqConfiguration.class, RpcServerPostProcessor.class, RpcClientScanRegistrar.class})
+@Import({RabbitMqConfiguration.class, RpcScanDefinitionRegistrar.class})
 public @interface EnableSimpleRpc {
 
-    String[] clientPath() default {};
+    String[] value() default {};
 }
