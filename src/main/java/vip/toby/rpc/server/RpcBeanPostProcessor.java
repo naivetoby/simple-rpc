@@ -41,15 +41,6 @@ public class RpcBeanPostProcessor implements BeanPostProcessor {
     @Lazy
     private ConnectionFactory connectionFactory;
     @Autowired
-    @Lazy
-    private DirectExchange syncDirectExchange;
-    @Autowired
-    @Lazy
-    private DirectExchange syncReplyDirectExchange;
-    @Autowired
-    @Lazy
-    private DirectExchange asyncDirectExchange;
-    @Autowired
     private ConfigurableApplicationContext applicationContext;
 
     @Override
@@ -74,6 +65,8 @@ public class RpcBeanPostProcessor implements BeanPostProcessor {
      * 启动服务端监听
      */
     private void rpcServerStart(Object rpcServerBean, RpcServer rpcServer) {
+        DirectExchange syncDirectExchange = new DirectExchange("simple.rpc.sync", true, false);
+        DirectExchange asyncDirectExchange = new DirectExchange("simple.rpc.async", true, false);
         String rpcName = rpcServer.name();
         for (RpcType rpcType : rpcServer.type()) {
             switch (rpcType) {
@@ -81,13 +74,13 @@ public class RpcBeanPostProcessor implements BeanPostProcessor {
                     Map<String, Object> params = new HashMap<>(1);
                     params.put("x-message-ttl", rpcServer.xMessageTTL());
                     Queue syncQueue = queue(rpcName, rpcType, false, params);
-                    binding(rpcName, rpcType, syncQueue);
+                    binding(rpcName, rpcType, syncQueue, syncDirectExchange, asyncDirectExchange);
                     RpcServerHandler syncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean);
                     messageListenerContainer(rpcName, rpcType, syncQueue, syncServerHandler, rpcServer.threadNum());
                     break;
                 case ASYNC:
                     Queue asyncQueue = queue(rpcName, rpcType, true, null);
-                    binding(rpcName, rpcType, asyncQueue);
+                    binding(rpcName, rpcType, asyncQueue, syncDirectExchange, asyncDirectExchange);
                     RpcServerHandler asyncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean);
                     messageListenerContainer(rpcName, rpcType, asyncQueue, asyncServerHandler, rpcServer.threadNum());
                     break;
@@ -101,11 +94,14 @@ public class RpcBeanPostProcessor implements BeanPostProcessor {
      * 客户端
      */
     private void rpcClientSender(Class<?> rpcClientInterface, RpcClient rpcClient) {
+        DirectExchange syncReplyDirectExchange = new DirectExchange("simple.rpc.sync.reply", true, false);
         String rpcName = rpcClient.name();
         RpcType rpcType = rpcClient.type();
         switch (rpcType) {
             case SYNC:
-                RabbitTemplate syncSender = syncSender(rpcName, replyQueue(rpcName, UUID.randomUUID().toString()), rpcClient.replyTimeout(), rpcClient.maxAttempts());
+                Queue replyQueue = replyQueue(rpcName, UUID.randomUUID().toString());
+                replyBinding(rpcName, replyQueue, syncReplyDirectExchange);
+                RabbitTemplate syncSender = syncSender(rpcName, replyQueue, rpcClient.replyTimeout(), rpcClient.maxAttempts());
                 replyMessageListenerContainer(rpcName, syncSender);
                 registerBean(rpcClientInterface.getName(), RpcClientProxyFactory.class, rpcClientInterface, rpcName, rpcType, syncSender);
                 break;
@@ -129,7 +125,7 @@ public class RpcBeanPostProcessor implements BeanPostProcessor {
     /**
      * 实例化 Binding
      */
-    private Binding binding(String rpcName, RpcType rpcType, Queue queue) {
+    private Binding binding(String rpcName, RpcType rpcType, Queue queue, DirectExchange syncDirectExchange, DirectExchange asyncDirectExchange) {
         return registerBean(rpcType.getValue() + "_" + rpcName + "_Binding", Binding.class, queue.getName(), Binding.DestinationType.QUEUE, (rpcType == RpcType.SYNC ? syncDirectExchange : asyncDirectExchange).getName(), queue.getName(), Collections.<String, Object>emptyMap());
     }
 
@@ -162,7 +158,7 @@ public class RpcBeanPostProcessor implements BeanPostProcessor {
     /**
      * 实例化 ReplyBinding
      */
-    private Binding replyBinding(String rpcName, Queue queue) {
+    private Binding replyBinding(String rpcName, Queue queue, DirectExchange syncReplyDirectExchange) {
         return registerBean(RpcType.SYNC.getValue() + "_" + rpcName + "_ReplyBinding", Binding.class, queue.getName(), Binding.DestinationType.QUEUE, syncReplyDirectExchange.getName(), queue.getName(), Collections.<String, Object>emptyMap());
     }
 
