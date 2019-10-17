@@ -23,6 +23,7 @@ import org.springframework.core.type.filter.AnnotationTypeFilter;
 import org.springframework.retry.policy.SimpleRetryPolicy;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.util.ClassUtils;
 import vip.toby.rpc.annotation.EnableSimpleRpc;
 import vip.toby.rpc.annotation.RpcClient;
 import vip.toby.rpc.entity.RpcType;
@@ -72,9 +73,8 @@ public class RpcClientScanRegistrar implements ImportBeanDefinitionRegistrar, En
             for (String basePackage : basePackages) {
                 for (BeanDefinition beanDefinition : provider.findCandidateComponents(basePackage)) {
                     GenericBeanDefinition rpcClientProxy = new GenericBeanDefinition(beanDefinition);
-                    Class<?> rpcClientInterface = null;
                     try {
-                        rpcClientInterface = rpcClientProxy.resolveBeanClass(rpcClientProxy.getClass().getClassLoader());
+                        Class<?> rpcClientInterface = rpcClientProxy.resolveBeanClass(ClassUtils.getDefaultClassLoader());
                         RpcClient rpcClient = rpcClientProxy.getBeanClass().getAnnotation(RpcClient.class);
                         String rpcName = rpcClient.name();
                         RpcType rpcType = rpcClient.type();
@@ -86,7 +86,7 @@ public class RpcClientScanRegistrar implements ImportBeanDefinitionRegistrar, En
                         rpcClientProxy.getPropertyValues().add("rpcClientInterface", rpcClientInterface);
                         rpcClientProxy.getPropertyValues().add("rpcName", rpcName);
                         rpcClientProxy.getPropertyValues().add("rpcType", rpcType);
-                        rpcClientProxy.getPropertyValues().add("sender", rpcClientSender(rpcClient));
+                        rpcClientProxy.getPropertyValues().add("sender", rpcClientSender(registry, rpcClient));
                         // 采用按照类型注入的方式
                         rpcClientProxy.setAutowireMode(AbstractBeanDefinition.AUTOWIRE_BY_TYPE);
                         // 注入到spring
@@ -102,7 +102,7 @@ public class RpcClientScanRegistrar implements ImportBeanDefinitionRegistrar, En
     /**
      * 客户端
      */
-    private RabbitTemplate rpcClientSender(RpcClient rpcClient) {
+    private RabbitTemplate rpcClientSender(BeanDefinitionRegistry registry, RpcClient rpcClient) {
         String rpcName = rpcClient.name();
         if (rpcClient.type() == RpcType.SYNC) {
             Queue replyQueue = replyQueue(rpcName, UUID.randomUUID().toString());
