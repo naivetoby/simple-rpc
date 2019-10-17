@@ -13,9 +13,9 @@ import java.lang.reflect.Proxy;
  */
 public class RpcClientProxyFactory implements FactoryBean {
 
-    private Class<?> rpcClientInterface;
-    private RabbitTemplate sender;
-    private RpcType rpcType;
+    private final Class<?> rpcClientInterface;
+    private final RabbitTemplate sender;
+    private final RpcType rpcType;
 
     public RpcClientProxyFactory(Class<?> rpcClientInterface, RabbitTemplate sender, RpcType rpcType) {
         this.rpcClientInterface = rpcClientInterface;

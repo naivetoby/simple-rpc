@@ -30,22 +30,8 @@ public class RpcClientProxy implements InvocationHandler {
 
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-        // 调用object的方法
-        if (method.getDeclaringClass() == Object.class) {
-            String methodName = method.getName();
-            if (TO_STRING.equals(methodName)) {
-                return RpcClientProxy.this.toString();
-            }
-            if (HASH_CODE.equals(methodName)) {
-                return rpcClientInterface.hashCode() * 13 + this.hashCode();
-            }
-            if (EQUALS.equals(methodName)) {
-                return args[0] == proxy;
-            }
-            if (CLONE.equals(methodName)) {
-                throw new CloneNotSupportedException("clone is not supported for jade dao.");
-            }
-            throw new UnsupportedOperationException(rpcClientInterface.getName() + "#" + method.getName());
+        if (Object.class.equals(method.getDeclaringClass())) {
+            return method.invoke(this, args);
         }
 
 
