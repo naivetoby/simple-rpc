@@ -82,7 +82,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
             messageProperties = message.getMessageProperties();
             messageStr = new String(message.getBody(), StandardCharsets.UTF_8);
             // 打印
-            LOGGER.debug(rpcType.getName() + " RPCServer: " + rpcName + " 接收到消息: " + messageStr);
+            LOGGER.info(rpcType.getName() + " RPCServer: " + rpcName + " 接收到消息: " + messageStr);
             // 构建返回JSON值
             JSONObject resultJson = new JSONObject();
             try {
