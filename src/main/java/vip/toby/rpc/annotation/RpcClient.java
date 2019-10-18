@@ -14,8 +14,6 @@ import java.lang.annotation.*;
 @Documented
 public @interface RpcClient {
 
-    String[] value() default "";
-
     String name();
 
     int replyTimeout() default 2000;
