@@ -13,13 +13,13 @@ import java.lang.reflect.Proxy;
  */
 public class RpcClientProxyFactory implements FactoryBean {
 
-    private Class<?> rpcClientInterface;
+    private Class<?> rpcClientClass;
     private String rpcName;
     private RpcType rpcType;
     private RabbitTemplate sender;
 
-    public void setRpcClientInterfaceName(Class<?> rpcClientInterface) {
-        this.rpcClientInterface = rpcClientInterface;
+    public void setRpcClientClass(Class<?> rpcClientClass) {
+        this.rpcClientClass = rpcClientClass;
     }
 
     public void setRpcName(String rpcName) {
@@ -36,12 +36,12 @@ public class RpcClientProxyFactory implements FactoryBean {
 
     @Override
     public Object getObject() throws Exception {
-        return Proxy.newProxyInstance(this.rpcClientInterface.getClassLoader(), new Class[]{this.rpcClientInterface}, new RpcClientProxy(this.rpcClientInterface, this.rpcName, this.rpcType, this.sender));
+        return Proxy.newProxyInstance(this.rpcClientClass.getClassLoader(), new Class[]{this.rpcClientClass}, new RpcClientProxy(this.rpcClientClass, this.rpcName, this.rpcType, this.sender));
     }
 
     @Override
     public Class<?> getObjectType() {
-        return this.rpcClientInterface;
+        return this.rpcClientClass;
     }
 
     @Override

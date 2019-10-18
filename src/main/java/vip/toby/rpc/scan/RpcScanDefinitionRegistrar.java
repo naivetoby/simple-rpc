@@ -70,67 +70,90 @@ public class RpcScanDefinitionRegistrar implements ImportBeanDefinitionRegistrar
     public void registerBeanDefinitions(AnnotationMetadata metadata, BeanDefinitionRegistry registry) {
         Map<String, Object> annotationAttributes = metadata.getAnnotationAttributes(EnableSimpleRpc.class.getCanonicalName());
         if (annotationAttributes != null) {
-            String[] basePackages = (String[]) annotationAttributes.get("clientPath");
+            String[] basePackages = (String[]) annotationAttributes.get("value");
             if (basePackages.length == 0) {
                 basePackages = new String[]{((StandardAnnotationMetadata) metadata).getIntrospectedClass().getPackage().getName()};
             }
-            ClassPathScanningCandidateComponentProvider provider = new ClassPathScanningCandidateComponentProvider(false, this.environment) {
+            // 扫描 RpcServer 注解
+            ClassPathScanningCandidateComponentProvider serverProvider = new ClassPathScanningCandidateComponentProvider(false, this.environment) {
                 @Override
                 protected boolean isCandidateComponent(AnnotatedBeanDefinition beanDefinition) {
                     AnnotationMetadata metadata = beanDefinition.getMetadata();
-                    return metadata.isIndependent() && metadata.isInterface();
+                    return metadata.isIndependent() && metadata.isConcrete();
                 }
             };
-            provider.addIncludeFilter(new AnnotationTypeFilter(RpcServer.class));
-            provider.addIncludeFilter(new AnnotationTypeFilter(RpcClient.class));
+            serverProvider.addIncludeFilter(new AnnotationTypeFilter(RpcServer.class));
             for (String basePackage : basePackages) {
-                for (BeanDefinition beanDefinition : provider.findCandidateComponents(basePackage)) {
-                    RpcServer rpcServer = beanDefinition.getClass().getAnnotation(RpcServer.class);
-                    if (rpcServer != null) {
-                        String rpcName = rpcServer.name();
-                        for (RpcType rpcType : rpcServer.type()) {
-                            switch (rpcType) {
-                                case SYNC:
-                                    Map<String, Object> params = new HashMap<>(1);
-                                    params.put("x-message-ttl", rpcServer.xMessageTTL());
-                                    Queue syncQueue = queue(rpcName, rpcType, false, params);
-                                    binding(rpcName, rpcType, syncQueue);
-                                    RpcServerHandler syncServerHandler = rpcServerHandler(rpcName, rpcType, beanDefinition);
-                                    messageListenerContainer(rpcName, rpcType, syncQueue, syncServerHandler, rpcServer.threadNum());
-                                    break;
-                                case ASYNC:
-                                    Queue asyncQueue = queue(rpcName, rpcType, true, null);
-                                    binding(rpcName, rpcType, asyncQueue);
-                                    RpcServerHandler asyncServerHandler = rpcServerHandler(rpcName, rpcType, beanDefinition);
-                                    messageListenerContainer(rpcName, rpcType, asyncQueue, asyncServerHandler, rpcServer.threadNum());
-                                    break;
-                                default:
-                                    break;
+                for (BeanDefinition beanDefinition : serverProvider.findCandidateComponents(basePackage)) {
+                    GenericBeanDefinition rpcServerBeanDefinition = new GenericBeanDefinition(beanDefinition);
+                    try {
+                        Class<?> rpcServerClass = rpcServerBeanDefinition.resolveBeanClass(this.classLoader);
+                        if (rpcServerClass != null) {
+                            Object rpcServerBean = registerBean(beanFactory, beanDefinition.getBeanClassName(), rpcServerClass);
+                            RpcServer rpcServer = rpcServerClass.getAnnotation(RpcServer.class);
+                            if (rpcServer != null) {
+                                String rpcName = rpcServer.name();
+                                for (RpcType rpcType : rpcServer.type()) {
+                                    switch (rpcType) {
+                                        case SYNC:
+                                            Map<String, Object> params = new HashMap<>(1);
+                                            params.put("x-message-ttl", rpcServer.xMessageTTL());
+                                            Queue syncQueue = queue(rpcName, rpcType, false, params);
+                                            binding(rpcName, rpcType, syncQueue);
+                                            RpcServerHandler syncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean);
+                                            messageListenerContainer(rpcName, rpcType, syncQueue, syncServerHandler, rpcServer.threadNum());
+                                            break;
+                                        case ASYNC:
+                                            Queue asyncQueue = queue(rpcName, rpcType, true, null);
+                                            binding(rpcName, rpcType, asyncQueue);
+                                            RpcServerHandler asyncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean);
+                                            messageListenerContainer(rpcName, rpcType, asyncQueue, asyncServerHandler, rpcServer.threadNum());
+                                            break;
+                                        default:
+                                            break;
+                                    }
+                                }
                             }
                         }
-                    } else {
-                        GenericBeanDefinition rpcClientProxy = new GenericBeanDefinition(beanDefinition);
-                        try {
-                            Class<?> rpcClientInterface = rpcClientProxy.resolveBeanClass(this.classLoader);
-                            RpcClient rpcClient = rpcClientProxy.getBeanClass().getAnnotation(RpcClient.class);
-                            String rpcName = rpcClient.name();
-                            RpcType rpcType = rpcClient.type();
-                            // 获取真实接口class，并作为构造方法的参数
-                            rpcClientProxy.getConstructorArgumentValues().addGenericArgumentValue(rpcClientInterface);
-                            // 修改类为 RpcClientProxyFactory
-                            rpcClientProxy.setBeanClass(RpcClientProxyFactory.class);
-                            // 注入值
-                            rpcClientProxy.getPropertyValues().add("rpcClientInterface", rpcClientInterface);
-                            rpcClientProxy.getPropertyValues().add("rpcName", rpcName);
-                            rpcClientProxy.getPropertyValues().add("rpcType", rpcType);
-                            rpcClientProxy.getPropertyValues().add("sender", rpcClientSender(rpcClient));
-                            // 采用按照类型注入的方式
-                            rpcClientProxy.setAutowireMode(AbstractBeanDefinition.AUTOWIRE_BY_TYPE);
-                            // 注入到spring
-                            registry.registerBeanDefinition(beanDefinition.getBeanClassName(), rpcClientProxy);
-                        } catch (ClassNotFoundException e) {
-                            e.printStackTrace();
+                    } catch (ClassNotFoundException e) {
+                        e.printStackTrace();
+                    }
+                }
+                // 扫描 RpcClient 注解
+                ClassPathScanningCandidateComponentProvider clientProvider = new ClassPathScanningCandidateComponentProvider(false, this.environment) {
+                    @Override
+                    protected boolean isCandidateComponent(AnnotatedBeanDefinition beanDefinition) {
+                        AnnotationMetadata metadata = beanDefinition.getMetadata();
+                        return metadata.isIndependent() && metadata.isInterface();
+                    }
+                };
+                clientProvider.addIncludeFilter(new AnnotationTypeFilter(RpcClient.class));
+                for (BeanDefinition beanDefinition : clientProvider.findCandidateComponents(basePackage)) {
+                    GenericBeanDefinition rpcClientBeanDefinition = new GenericBeanDefinition(beanDefinition);
+                    try {
+                        Class<?> rpcClientClass = rpcClientBeanDefinition.resolveBeanClass(this.classLoader);
+                        if (rpcClientClass != null) {
+                            RpcClient rpcClient = rpcClientClass.getAnnotation(RpcClient.class);
+                            if (rpcClient != null) {
+                                String rpcName = rpcClient.name();
+                                RpcType rpcType = rpcClient.type();
+                                // 获取真实接口class，并作为构造方法的参数
+                                rpcClientBeanDefinition.getConstructorArgumentValues().addGenericArgumentValue(rpcClientClass);
+                                // 修改类为 RpcClientProxyFactory
+                                rpcClientBeanDefinition.setBeanClass(RpcClientProxyFactory.class);
+                                // 注入值
+                                rpcClientBeanDefinition.getPropertyValues().add("rpcClientClass", rpcClientClass);
+                                rpcClientBeanDefinition.getPropertyValues().add("rpcName", rpcName);
+                                rpcClientBeanDefinition.getPropertyValues().add("rpcType", rpcType);
+                                rpcClientBeanDefinition.getPropertyValues().add("sender", rpcClientSender(rpcClient));
+                                // 采用按照类型注入的方式
+                                rpcClientBeanDefinition.setAutowireMode(AbstractBeanDefinition.AUTOWIRE_BY_TYPE);
+                                // 注入到spring
+                                registry.registerBeanDefinition(beanDefinition.getBeanClassName(), rpcClientBeanDefinition);
+                            }
                         }
+                    } catch (ClassNotFoundException e) {
+                        e.printStackTrace();
                     }
                 }
             }
@@ -265,7 +288,7 @@ public class RpcScanDefinitionRegistrar implements ImportBeanDefinitionRegistrar
      */
     private <T> T registerBean(BeanFactory beanFactory, String name, Class<T> clazz, Object... args) {
         BeanDefinitionBuilder beanDefinitionBuilder = BeanDefinitionBuilder.genericBeanDefinition(clazz);
-        if (args.length > 0) {
+        if (args != null && args.length > 0) {
             for (Object arg : args) {
                 beanDefinitionBuilder.addConstructorArgValue(arg);
             }
