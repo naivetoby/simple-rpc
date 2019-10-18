@@ -5,7 +5,6 @@ package vip.toby.rpc.entity;
  *
  * @author toby
  */
-
 public enum RpcType {
 
     // 同步

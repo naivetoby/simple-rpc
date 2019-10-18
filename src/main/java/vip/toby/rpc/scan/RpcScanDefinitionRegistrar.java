@@ -4,6 +4,7 @@ import org.springframework.amqp.core.AcknowledgeMode;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
 import org.springframework.beans.BeansException;
@@ -11,6 +12,7 @@ import org.springframework.beans.factory.BeanClassLoaderAware;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.support.AbstractBeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
@@ -29,6 +31,7 @@ import vip.toby.rpc.annotation.EnableSimpleRpc;
 import vip.toby.rpc.annotation.RpcClient;
 import vip.toby.rpc.annotation.RpcServer;
 import vip.toby.rpc.client.RpcClientProxyFactory;
+import vip.toby.rpc.entity.RpcMode;
 import vip.toby.rpc.entity.RpcType;
 import vip.toby.rpc.server.RpcServerHandler;
 
@@ -50,6 +53,8 @@ public class RpcScanDefinitionRegistrar implements ImportBeanDefinitionRegistrar
     private DirectExchange syncDirectExchange;
     private DirectExchange asyncDirectExchange;
     private DirectExchange syncReplyDirectExchange;
+    @Autowired
+    private ConnectionFactory connectionFactory;
 
     @Override
     public void setEnvironment(Environment environment) {
@@ -68,16 +73,27 @@ public class RpcScanDefinitionRegistrar implements ImportBeanDefinitionRegistrar
 
     @Override
     public void registerBeanDefinitions(AnnotationMetadata metadata, BeanDefinitionRegistry registry) {
+        connectionFactory = beanFactory.getBean(ConnectionFactory.class);
         Map<String, Object> annotationAttributes = metadata.getAnnotationAttributes(EnableSimpleRpc.class.getCanonicalName());
         if (annotationAttributes != null) {
             String[] basePackages = (String[]) annotationAttributes.get("value");
             if (basePackages.length == 0) {
                 basePackages = new String[]{((StandardAnnotationMetadata) metadata).getIntrospectedClass().getPackage().getName()};
             }
-            // 扫描 RpcServer 注解
-            scanServer(basePackages);
-            // 扫描 RpcClient 注解
-            scanClient(basePackages, registry);
+            RpcMode[] rpcModes = (RpcMode[]) annotationAttributes.get("mode");
+            for (RpcMode rpcMode : rpcModes) {
+                switch (rpcMode) {
+                    case RPC_CLIENT:
+                        // 扫描 RpcClient 注解
+                        scanClient(basePackages, registry);
+                        break;
+                    case RPC_SERVER:
+                        // 扫描 RpcServer 注解
+                        scanServer(basePackages);
+                    default:
+                        break;
+                }
+            }
         }
     }
 
@@ -100,7 +116,7 @@ public class RpcScanDefinitionRegistrar implements ImportBeanDefinitionRegistrar
                 try {
                     Class<?> rpcServerClass = rpcServerBeanDefinition.resolveBeanClass(this.classLoader);
                     if (rpcServerClass != null) {
-                        Object rpcServerBean = registerBean(this.beanFactory, beanDefinition.getBeanClassName(), rpcServerClass);
+                        Object rpcServerBean = registerBean(beanDefinition.getBeanClassName(), rpcServerClass);
                         RpcServer rpcServer = rpcServerClass.getAnnotation(RpcServer.class);
                         if (rpcServer != null) {
                             String rpcName = rpcServer.name();
@@ -181,28 +197,28 @@ public class RpcScanDefinitionRegistrar implements ImportBeanDefinitionRegistrar
      * 实例化 Queue
      */
     private Queue queue(String rpcName, RpcType rpcType, boolean durable, Map<String, Object> params) {
-        return registerBean(this.beanFactory, rpcType.getValue() + "_" + rpcName + "_Queue", Queue.class, rpcType == RpcType.ASYNC ? (rpcName + ".async") : rpcName, durable, false, false, params);
+        return registerBean(rpcType.getValue() + "_" + rpcName + "_Queue", Queue.class, rpcType == RpcType.ASYNC ? (rpcName + ".async") : rpcName, durable, false, false, params);
     }
 
     /**
      * 实例化 Binding
      */
     private void binding(String rpcName, RpcType rpcType, Queue queue) {
-        registerBean(this.beanFactory, rpcType.getValue() + "_" + rpcName + "_Binding", Binding.class, queue.getName(), Binding.DestinationType.QUEUE, getDirectExchange(rpcType).getName(), queue.getName(), Collections.<String, Object>emptyMap());
+        registerBean(rpcType.getValue() + "_" + rpcName + "_Binding", Binding.class, queue.getName(), Binding.DestinationType.QUEUE, getDirectExchange(rpcType).getName(), queue.getName(), Collections.<String, Object>emptyMap());
     }
 
     /**
      * 实例化 RpcServerHandler
      */
     private RpcServerHandler rpcServerHandler(String rpcName, RpcType rpcType, Object rpcServerBean) {
-        return registerBean(this.beanFactory, rpcType.getValue() + "_" + rpcName + "_RpcServerHandler", RpcServerHandler.class, rpcServerBean, rpcName, rpcType);
+        return registerBean(rpcType.getValue() + "_" + rpcName + "_RpcServerHandler", RpcServerHandler.class, rpcServerBean, rpcName, rpcType);
     }
 
     /**
      * 实例化 SimpleMessageListenerContainer
      */
     private void messageListenerContainer(String rpcName, RpcType rpcType, Queue queue, RpcServerHandler rpcServerHandler, int threadNum) {
-        SimpleMessageListenerContainer messageListenerContainer = registerBean(this.beanFactory, rpcType.getValue() + "_" + rpcName + "_MessageListenerContainer", SimpleMessageListenerContainer.class, null);
+        SimpleMessageListenerContainer messageListenerContainer = registerBean(rpcType.getValue() + "_" + rpcName + "_MessageListenerContainer", SimpleMessageListenerContainer.class, connectionFactory);
         messageListenerContainer.setQueueNames(queue.getName());
         messageListenerContainer.setMessageListener(rpcServerHandler);
         messageListenerContainer.setAcknowledgeMode(AcknowledgeMode.MANUAL);
@@ -215,12 +231,12 @@ public class RpcScanDefinitionRegistrar implements ImportBeanDefinitionRegistrar
     private DirectExchange getDirectExchange(RpcType rpcType) {
         if (rpcType == RpcType.SYNC) {
             if (this.syncDirectExchange == null) {
-                this.syncDirectExchange = registerBean(this.beanFactory, "syncDirectExchange", DirectExchange.class, "simple.rpc.sync", true, false);
+                this.syncDirectExchange = registerBean("syncDirectExchange", DirectExchange.class, "simple.rpc.sync", true, false);
             }
             return this.syncDirectExchange;
         }
         if (this.asyncDirectExchange == null) {
-            this.asyncDirectExchange = registerBean(this.beanFactory, "asyncDirectExchange", DirectExchange.class, "simple.rpc.async", true, false);
+            this.asyncDirectExchange = registerBean("asyncDirectExchange", DirectExchange.class, "simple.rpc.async", true, false);
         }
         return this.asyncDirectExchange;
     }
@@ -244,21 +260,21 @@ public class RpcScanDefinitionRegistrar implements ImportBeanDefinitionRegistrar
      * 实例化 replyQueue
      */
     private Queue replyQueue(String rpcName, String rabbitClientId) {
-        return registerBean(this.beanFactory, RpcType.SYNC.getValue() + "_" + rpcName + "_ReplyQueue", Queue.class, rpcName + ".reply." + rabbitClientId, true, false, false);
+        return registerBean(RpcType.SYNC.getValue() + "_" + rpcName + "_ReplyQueue", Queue.class, rpcName + ".reply." + rabbitClientId, true, false, false);
     }
 
     /**
      * 实例化 ReplyBinding
      */
     private void replyBinding(String rpcName, Queue queue) {
-        registerBean(this.beanFactory, RpcType.SYNC.getValue() + "_" + rpcName + "_ReplyBinding", Binding.class, queue.getName(), Binding.DestinationType.QUEUE, getSyncReplyDirectExchange().getName(), queue.getName(), Collections.<String, Object>emptyMap());
+        registerBean(RpcType.SYNC.getValue() + "_" + rpcName + "_ReplyBinding", Binding.class, queue.getName(), Binding.DestinationType.QUEUE, getSyncReplyDirectExchange().getName(), queue.getName(), Collections.<String, Object>emptyMap());
     }
 
     /**
      * 实例化 ReplyMessageListenerContainer
      */
     private void replyMessageListenerContainer(String rpcName, RabbitTemplate syncSender) {
-        SimpleMessageListenerContainer replyMessageListenerContainer = registerBean(this.beanFactory, RpcType.SYNC.getValue() + "_" + rpcName + "_ReplyMessageListenerContainer", SimpleMessageListenerContainer.class, null);
+        SimpleMessageListenerContainer replyMessageListenerContainer = registerBean(RpcType.SYNC.getValue() + "_" + rpcName + "_ReplyMessageListenerContainer", SimpleMessageListenerContainer.class, connectionFactory);
         replyMessageListenerContainer.setQueueNames(rpcName);
         replyMessageListenerContainer.setMessageListener(syncSender);
     }
@@ -267,7 +283,7 @@ public class RpcScanDefinitionRegistrar implements ImportBeanDefinitionRegistrar
      * 实例化 AsyncSender
      */
     private RabbitTemplate asyncSender(String rpcName) {
-        RabbitTemplate asyncSender = registerBean(this.beanFactory, RpcType.ASYNC.getValue() + "_" + rpcName + "_Sender", RabbitTemplate.class, null);
+        RabbitTemplate asyncSender = registerBean(RpcType.ASYNC.getValue() + "_" + rpcName + "_Sender", RabbitTemplate.class, connectionFactory);
         asyncSender.setDefaultReceiveQueue(rpcName + ".async");
         asyncSender.setRoutingKey(rpcName + ".async");
         return asyncSender;
@@ -281,7 +297,7 @@ public class RpcScanDefinitionRegistrar implements ImportBeanDefinitionRegistrar
         simpleRetryPolicy.setMaxAttempts(maxAttempts);
         RetryTemplate retryTemplate = new RetryTemplate();
         retryTemplate.setRetryPolicy(simpleRetryPolicy);
-        RabbitTemplate syncSender = registerBean(this.beanFactory, RpcType.SYNC.getValue() + "_" + rpcName + "_Sender", RabbitTemplate.class, null);
+        RabbitTemplate syncSender = registerBean(RpcType.SYNC.getValue() + "_" + rpcName + "_Sender", RabbitTemplate.class, connectionFactory);
         syncSender.setDefaultReceiveQueue(rpcName);
         syncSender.setRoutingKey(rpcName);
         syncSender.setReplyAddress(replyQueue.getName());
@@ -295,7 +311,7 @@ public class RpcScanDefinitionRegistrar implements ImportBeanDefinitionRegistrar
      */
     private DirectExchange getSyncReplyDirectExchange() {
         if (this.syncReplyDirectExchange == null) {
-            this.syncReplyDirectExchange = registerBean(this.beanFactory, "syncReplyDirectExchange", DirectExchange.class, "simple.rpc.sync.reply", true, false);
+            this.syncReplyDirectExchange = registerBean("syncReplyDirectExchange", DirectExchange.class, "simple.rpc.sync.reply", true, false);
         }
         return this.syncReplyDirectExchange;
     }
@@ -303,7 +319,7 @@ public class RpcScanDefinitionRegistrar implements ImportBeanDefinitionRegistrar
     /**
      * 对象实例化并注册到Spring上下文
      */
-    private <T> T registerBean(BeanFactory beanFactory, String name, Class<T> clazz, Object... args) {
+    private <T> T registerBean(String name, Class<T> clazz, Object... args) {
         BeanDefinitionBuilder beanDefinitionBuilder = BeanDefinitionBuilder.genericBeanDefinition(clazz);
         if (args != null && args.length > 0) {
             for (Object arg : args) {
@@ -318,4 +334,5 @@ public class RpcScanDefinitionRegistrar implements ImportBeanDefinitionRegistrar
         beanDefinitionRegistry.registerBeanDefinition(name, beanDefinition);
         return beanFactory.getBean(name, clazz);
     }
+
 }
