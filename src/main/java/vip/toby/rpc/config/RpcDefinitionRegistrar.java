@@ -14,6 +14,7 @@ import org.springframework.beans.factory.support.AbstractBeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.GenericBeanDefinition;
+import org.springframework.boot.autoconfigure.AutoConfigurationPackages;
 import org.springframework.context.EnvironmentAware;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
 import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
@@ -22,6 +23,7 @@ import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
 import org.springframework.retry.policy.SimpleRetryPolicy;
 import org.springframework.retry.support.RetryTemplate;
+import org.springframework.util.StringUtils;
 import vip.toby.rpc.annotation.RpcClient;
 import vip.toby.rpc.annotation.RpcServer;
 import vip.toby.rpc.client.RpcClientProxyFactory;
@@ -47,7 +49,6 @@ public class RpcDefinitionRegistrar implements ImportBeanDefinitionRegistrar, En
     private DirectExchange asyncDirectExchange;
     private DirectExchange syncReplyDirectExchange;
     private ConnectionFactory connectionFactory;
-    private AmqpAdmin amqpAdmin;
 
     @Override
     public void setEnvironment(Environment environment) {
@@ -66,13 +67,16 @@ public class RpcDefinitionRegistrar implements ImportBeanDefinitionRegistrar, En
 
     @Override
     public void registerBeanDefinitions(AnnotationMetadata metadata, BeanDefinitionRegistry registry) {
+        // 强制初始化ConnectionFactory
         this.connectionFactory = this.beanFactory.getBean(ConnectionFactory.class);
-        this.amqpAdmin = this.beanFactory.getBean(AmqpAdmin.class);
-//        String[] basePackages = new String[]{((StandardAnnotationMetadata) metadata).getIntrospectedClass().getPackage().getName()};
-//        // 扫描 RpcClient 注解
-//        scanClient(basePackages, registry);
-//        // 扫描 RpcServer 注解
-//        scanServer(basePackages);
+        // 强制初始化AmqpAdmin
+        this.beanFactory.getBean(AmqpAdmin.class);
+        // 开始扫描默认包路径
+        String[] basePackages = StringUtils.toStringArray(AutoConfigurationPackages.get(this.beanFactory));
+        // 扫描 RpcClient 注解
+        scanClient(basePackages, registry);
+        // 扫描 RpcServer 注解
+        scanServer(basePackages);
     }
 
     /**
