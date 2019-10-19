@@ -1,9 +1,6 @@
-package vip.toby.rpc.scan;
+package vip.toby.rpc.config;
 
-import org.springframework.amqp.core.AcknowledgeMode;
-import org.springframework.amqp.core.Binding;
-import org.springframework.amqp.core.DirectExchange;
-import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
@@ -12,7 +9,6 @@ import org.springframework.beans.factory.BeanClassLoaderAware;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.support.AbstractBeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
@@ -23,15 +19,12 @@ import org.springframework.context.annotation.ClassPathScanningCandidateComponen
 import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
 import org.springframework.core.env.Environment;
 import org.springframework.core.type.AnnotationMetadata;
-import org.springframework.core.type.StandardAnnotationMetadata;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
 import org.springframework.retry.policy.SimpleRetryPolicy;
 import org.springframework.retry.support.RetryTemplate;
-import vip.toby.rpc.annotation.EnableSimpleRpc;
 import vip.toby.rpc.annotation.RpcClient;
 import vip.toby.rpc.annotation.RpcServer;
 import vip.toby.rpc.client.RpcClientProxyFactory;
-import vip.toby.rpc.entity.RpcMode;
 import vip.toby.rpc.entity.RpcType;
 import vip.toby.rpc.server.RpcServerHandler;
 
@@ -45,7 +38,7 @@ import java.util.UUID;
  *
  * @author toby
  */
-public class RpcScanDefinitionRegistrar implements ImportBeanDefinitionRegistrar, EnvironmentAware, BeanFactoryAware, BeanClassLoaderAware {
+public class RpcDefinitionRegistrar implements ImportBeanDefinitionRegistrar, EnvironmentAware, BeanFactoryAware, BeanClassLoaderAware {
 
     private Environment environment;
     private BeanFactory beanFactory;
@@ -53,8 +46,8 @@ public class RpcScanDefinitionRegistrar implements ImportBeanDefinitionRegistrar
     private DirectExchange syncDirectExchange;
     private DirectExchange asyncDirectExchange;
     private DirectExchange syncReplyDirectExchange;
-    @Autowired
     private ConnectionFactory connectionFactory;
+    private AmqpAdmin amqpAdmin;
 
     @Override
     public void setEnvironment(Environment environment) {
@@ -73,28 +66,13 @@ public class RpcScanDefinitionRegistrar implements ImportBeanDefinitionRegistrar
 
     @Override
     public void registerBeanDefinitions(AnnotationMetadata metadata, BeanDefinitionRegistry registry) {
-        connectionFactory = beanFactory.getBean(ConnectionFactory.class);
-        Map<String, Object> annotationAttributes = metadata.getAnnotationAttributes(EnableSimpleRpc.class.getCanonicalName());
-        if (annotationAttributes != null) {
-            String[] basePackages = (String[]) annotationAttributes.get("value");
-            if (basePackages.length == 0) {
-                basePackages = new String[]{((StandardAnnotationMetadata) metadata).getIntrospectedClass().getPackage().getName()};
-            }
-            RpcMode[] rpcModes = (RpcMode[]) annotationAttributes.get("mode");
-            for (RpcMode rpcMode : rpcModes) {
-                switch (rpcMode) {
-                    case RPC_CLIENT:
-                        // 扫描 RpcClient 注解
-                        scanClient(basePackages, registry);
-                        break;
-                    case RPC_SERVER:
-                        // 扫描 RpcServer 注解
-                        scanServer(basePackages);
-                    default:
-                        break;
-                }
-            }
-        }
+        this.connectionFactory = this.beanFactory.getBean(ConnectionFactory.class);
+        this.amqpAdmin = this.beanFactory.getBean(AmqpAdmin.class);
+//        String[] basePackages = new String[]{((StandardAnnotationMetadata) metadata).getIntrospectedClass().getPackage().getName()};
+//        // 扫描 RpcClient 注解
+//        scanClient(basePackages, registry);
+//        // 扫描 RpcServer 注解
+//        scanServer(basePackages);
     }
 
     /**
