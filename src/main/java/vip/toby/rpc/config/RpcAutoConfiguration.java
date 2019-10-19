@@ -81,7 +81,7 @@ public class RpcAutoConfiguration {
 
         @Bean
         @ConditionalOnMissingBean
-        public AmqpAdmin amqpAdmin(ConnectionFactory connectionFactory) {
+        public static AmqpAdmin amqpAdmin(ConnectionFactory connectionFactory) {
             return new RabbitAdmin(connectionFactory);
         }
 
