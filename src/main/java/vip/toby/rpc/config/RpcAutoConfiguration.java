@@ -9,8 +9,8 @@ import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration;
-import org.springframework.boot.autoconfigure.amqp.RabbitProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnSingleCandidate;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.context.properties.PropertyMapper;
 import org.springframework.context.annotation.Bean;
@@ -26,8 +26,8 @@ import java.util.Objects;
  * @author toby
  */
 @Configuration
+@EnableConfigurationProperties(RpcRabbitProperties.class)
 @AutoConfigureBefore(RabbitAutoConfiguration.class)
-@EnableConfigurationProperties(RabbitProperties.class)
 @Import({RpcDefinitionRegistrar.class})
 public class RpcAutoConfiguration {
 
@@ -36,23 +36,23 @@ public class RpcAutoConfiguration {
     protected static class RabbitConnectionFactoryCreator {
 
         @Bean
-        public static CachingConnectionFactory rabbitConnectionFactory(RabbitProperties properties, ObjectProvider<ConnectionNameStrategy> connectionNameStrategy) throws Exception {
+        public static CachingConnectionFactory rabbitConnectionFactory(RpcRabbitProperties properties, ObjectProvider<ConnectionNameStrategy> connectionNameStrategy) throws Exception {
             PropertyMapper map = PropertyMapper.get();
             CachingConnectionFactory factory = new CachingConnectionFactory(Objects.requireNonNull(getRabbitConnectionFactoryBean(properties).getObject()));
             map.from(properties::determineAddresses).to(factory::setAddresses);
             map.from(properties::isPublisherConfirms).to(factory::setPublisherConfirms);
             map.from(properties::isPublisherReturns).to(factory::setPublisherReturns);
-            RabbitProperties.Cache.Channel channel = properties.getCache().getChannel();
+            RpcRabbitProperties.Cache.Channel channel = properties.getCache().getChannel();
             map.from(channel::getSize).whenNonNull().to(factory::setChannelCacheSize);
             map.from(channel::getCheckoutTimeout).whenNonNull().as(Duration::toMillis).to(factory::setChannelCheckoutTimeout);
-            RabbitProperties.Cache.Connection connection = properties.getCache().getConnection();
+            RpcRabbitProperties.Cache.Connection connection = properties.getCache().getConnection();
             map.from(connection::getMode).whenNonNull().to(factory::setCacheMode);
             map.from(connection::getSize).whenNonNull().to(factory::setConnectionCacheSize);
             map.from(connectionNameStrategy::getIfUnique).whenNonNull().to(factory::setConnectionNameStrategy);
             return factory;
         }
 
-        private static RabbitConnectionFactoryBean getRabbitConnectionFactoryBean(RabbitProperties properties) throws Exception {
+        private static RabbitConnectionFactoryBean getRabbitConnectionFactoryBean(RpcRabbitProperties properties) throws Exception {
             PropertyMapper map = PropertyMapper.get();
             RabbitConnectionFactoryBean factory = new RabbitConnectionFactoryBean();
             map.from(properties::determineHost).whenNonNull().to(factory::setHost);
@@ -61,7 +61,7 @@ public class RpcAutoConfiguration {
             map.from(properties::determinePassword).whenNonNull().to(factory::setPassword);
             map.from(properties::determineVirtualHost).whenNonNull().to(factory::setVirtualHost);
             map.from(properties::getRequestedHeartbeat).whenNonNull().asInt(Duration::getSeconds).to(factory::setRequestedHeartbeat);
-            RabbitProperties.Ssl ssl = properties.getSsl();
+            RpcRabbitProperties.Ssl ssl = properties.getSsl();
             if (ssl.isEnabled()) {
                 factory.setUseSSL(true);
                 map.from(ssl::getAlgorithm).whenNonNull().to(factory::setSslAlgorithm);
@@ -80,6 +80,7 @@ public class RpcAutoConfiguration {
         }
 
         @Bean
+        @ConditionalOnSingleCandidate(ConnectionFactory.class)
         @ConditionalOnMissingBean
         public static AmqpAdmin amqpAdmin(ConnectionFactory connectionFactory) {
             return new RabbitAdmin(connectionFactory);

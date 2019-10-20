@@ -18,6 +18,7 @@ import org.springframework.boot.autoconfigure.AutoConfigurationPackages;
 import org.springframework.context.EnvironmentAware;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
 import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
+import org.springframework.core.Ordered;
 import org.springframework.core.env.Environment;
 import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
@@ -40,7 +41,7 @@ import java.util.UUID;
  *
  * @author toby
  */
-public class RpcDefinitionRegistrar implements ImportBeanDefinitionRegistrar, EnvironmentAware, BeanFactoryAware, BeanClassLoaderAware {
+public class RpcDefinitionRegistrar implements ImportBeanDefinitionRegistrar, EnvironmentAware, BeanFactoryAware, BeanClassLoaderAware, Ordered {
 
     private Environment environment;
     private BeanFactory beanFactory;
@@ -49,6 +50,11 @@ public class RpcDefinitionRegistrar implements ImportBeanDefinitionRegistrar, En
     private DirectExchange asyncDirectExchange;
     private DirectExchange syncReplyDirectExchange;
     private ConnectionFactory connectionFactory;
+
+    @Override
+    public int getOrder() {
+        return Ordered.LOWEST_PRECEDENCE;
+    }
 
     @Override
     public void setEnvironment(Environment environment) {
