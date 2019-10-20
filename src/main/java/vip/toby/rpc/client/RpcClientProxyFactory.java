@@ -55,7 +55,7 @@ public class RpcClientProxyFactory implements FactoryBean, BeanFactoryAware {
             Queue replyQueue = replyQueue(rpcName, UUID.randomUUID().toString());
             replyBinding(rpcName, replyQueue);
             RabbitTemplate syncSender = syncSender(rpcName, replyQueue, replyTimeout, maxAttempts, getConnectionFactory());
-            replyMessageListenerContainer(rpcName, syncSender, getConnectionFactory());
+            replyMessageListenerContainer(rpcName, replyQueue, syncSender, getConnectionFactory());
             sender = syncSender;
         } else {
             sender = asyncSender(rpcName, getConnectionFactory());
@@ -90,9 +90,9 @@ public class RpcClientProxyFactory implements FactoryBean, BeanFactoryAware {
     /**
      * 实例化 ReplyMessageListenerContainer
      */
-    private void replyMessageListenerContainer(String rpcName, RabbitTemplate syncSender, ConnectionFactory connectionFactory) {
+    private void replyMessageListenerContainer(String rpcName, Queue queue, RabbitTemplate syncSender, ConnectionFactory connectionFactory) {
         SimpleMessageListenerContainer replyMessageListenerContainer = registerBean(RpcType.SYNC.getValue() + "_" + rpcName + "_ReplyMessageListenerContainer", SimpleMessageListenerContainer.class, connectionFactory);
-        replyMessageListenerContainer.setQueueNames(rpcName);
+        replyMessageListenerContainer.setQueueNames(queue.getName());
         replyMessageListenerContainer.setMessageListener(syncSender);
     }
 
