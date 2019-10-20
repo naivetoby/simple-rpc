@@ -3,7 +3,6 @@ package vip.toby.rpc.client;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.beans.factory.InitializingBean;
 import vip.toby.rpc.entity.RpcType;
 
 import java.lang.reflect.InvocationHandler;
@@ -14,7 +13,7 @@ import java.lang.reflect.Method;
  *
  * @author toby
  */
-public class RpcClientProxy implements InvocationHandler, InitializingBean {
+public class RpcClientProxy implements InvocationHandler {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(RpcClientProxy.class);
 
@@ -28,11 +27,6 @@ public class RpcClientProxy implements InvocationHandler, InitializingBean {
         this.rpcName = rpcName;
         this.rpcType = rpcType;
         this.sender = sender;
-    }
-
-    @Override
-    public void afterPropertiesSet() throws Exception {
-        LOGGER.info(this.rpcType.getName() + " RPCClient: " + this.rpcName + " 已实例化");
     }
 
     @Override

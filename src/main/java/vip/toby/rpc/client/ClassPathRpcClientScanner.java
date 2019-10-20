@@ -2,6 +2,9 @@ package vip.toby.rpc.client;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinitionHolder;
 import org.springframework.beans.factory.config.RuntimeBeanReference;
@@ -20,13 +23,19 @@ import java.util.Set;
  *
  * @author toby
  */
-public class ClassPathRpcClientScanner extends ClassPathBeanDefinitionScanner {
+public class ClassPathRpcClientScanner extends ClassPathBeanDefinitionScanner implements BeanFactoryAware {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ClassPathRpcClientScanner.class);
 
+    private BeanFactory beanFactory;
 
     public ClassPathRpcClientScanner(BeanDefinitionRegistry registry) {
         super(registry, false);
+    }
+
+    @Override
+    public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
+        this.beanFactory = beanFactory;
     }
 
     public void registerFilters() {
@@ -60,6 +69,7 @@ public class ClassPathRpcClientScanner extends ClassPathBeanDefinitionScanner {
             rpcClientBeanDefinition.setBeanClass(RpcClientProxyFactory.class);
             // 注入值
             rpcClientBeanDefinition.getPropertyValues().add("connectionFactory", new RuntimeBeanReference("rabbitConnectionFactory"));
+            rpcClientBeanDefinition.getPropertyValues().add("beanFactory", this.beanFactory);
             // 采用按照类型注入的方式
             rpcClientBeanDefinition.setAutowireMode(AbstractBeanDefinition.AUTOWIRE_BY_TYPE);
         }
