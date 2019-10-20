@@ -59,7 +59,7 @@ public class ClassPathRpcClientScanner extends ClassPathBeanDefinitionScanner {
             // 修改类为 RpcClientProxyFactory
             rpcClientBeanDefinition.setBeanClass(RpcClientProxyFactory.class);
             // 注入值
-            rpcClientBeanDefinition.getPropertyValues().add("connectionFactory", new RuntimeBeanReference("connectionFactory"));
+            rpcClientBeanDefinition.getPropertyValues().add("connectionFactory", new RuntimeBeanReference("rabbitConnectionFactory"));
             // 采用按照类型注入的方式
             rpcClientBeanDefinition.setAutowireMode(AbstractBeanDefinition.AUTOWIRE_BY_TYPE);
         }
