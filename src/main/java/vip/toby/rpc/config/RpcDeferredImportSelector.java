@@ -6,7 +6,7 @@ import org.springframework.core.type.AnnotationMetadata;
 import vip.toby.rpc.annotation.EnableSimpleRpc;
 import vip.toby.rpc.client.RpcClientScannerRegistrar;
 import vip.toby.rpc.entity.RpcMode;
-import vip.toby.rpc.server.RpcServerScannerRegistrar;
+import vip.toby.rpc.server.RpcServerPostProcessor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,7 +32,7 @@ public class RpcDeferredImportSelector implements DeferredImportSelector {
                         definitionRegistrars.add(RpcClientScannerRegistrar.class.getName());
                         break;
                     case RPC_SERVER:
-                        definitionRegistrars.add(RpcServerScannerRegistrar.class.getName());
+                        definitionRegistrars.add(RpcServerPostProcessor.class.getName());
                         break;
                     default:
                         break;
