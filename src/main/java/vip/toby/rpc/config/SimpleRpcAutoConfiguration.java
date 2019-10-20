@@ -4,12 +4,12 @@ import org.springframework.context.annotation.Configuration;
 import vip.toby.rpc.annotation.EnableSimpleRpc;
 
 /**
- * RpcAutoConfiguration
+ * SimpleRpcAutoConfiguration
  *
  * @author toby
  */
 @Configuration
 @EnableSimpleRpc
-public class RpcAutoConfiguration {
+public class SimpleRpcAutoConfiguration {
 
 }

@@ -1,2 +1,2 @@
 org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
-vip.toby.rpc.config.RpcAutoConfiguration
+vip.toby.rpc.config.SimpleRpcAutoConfiguration
