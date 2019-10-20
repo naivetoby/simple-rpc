@@ -1,7 +1,7 @@
 package vip.toby.rpc.entity;
 
 /**
- * RPC调用状态码
+ * rpc调用状态码
  *
  * @author toby
  */
