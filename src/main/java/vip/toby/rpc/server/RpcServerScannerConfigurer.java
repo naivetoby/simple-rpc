@@ -1,4 +1,4 @@
-package vip.toby.rpc.client;
+package vip.toby.rpc.server;
 
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
@@ -10,11 +10,11 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.util.StringUtils;
 
 /**
- * RpcClientScannerConfigurer
+ * RpcServerScannerConfigurer
  *
  * @author toby
  */
-public class RpcClientScannerConfigurer implements BeanDefinitionRegistryPostProcessor, ApplicationContextAware {
+public class RpcServerScannerConfigurer implements BeanDefinitionRegistryPostProcessor, ApplicationContextAware {
 
     private String basePackage;
     private ApplicationContext applicationContext;
@@ -30,7 +30,7 @@ public class RpcClientScannerConfigurer implements BeanDefinitionRegistryPostPro
 
     @Override
     public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) throws BeansException {
-        ClassPathRpcClientScanner scanner = new ClassPathRpcClientScanner(registry);
+        ClassPathRpcServerScanner scanner = new ClassPathRpcServerScanner(registry);
         scanner.setResourceLoader(this.applicationContext);
         scanner.registerFilters();
         scanner.scan(StringUtils.tokenizeToStringArray(this.basePackage, ConfigurableApplicationContext.CONFIG_LOCATION_DELIMITERS));

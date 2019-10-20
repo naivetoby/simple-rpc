@@ -3,6 +3,14 @@ package vip.toby.rpc.config;
 import org.springframework.context.annotation.DeferredImportSelector;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.type.AnnotationMetadata;
+import vip.toby.rpc.annotation.EnableSimpleRpc;
+import vip.toby.rpc.client.RpcClientScannerRegistrar;
+import vip.toby.rpc.entity.RpcMode;
+import vip.toby.rpc.server.RpcServerScannerRegistrar;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 /**
  * RpcDeferredImportSelector
@@ -14,7 +22,24 @@ public class RpcDeferredImportSelector implements DeferredImportSelector {
 
     @Override
     public String[] selectImports(AnnotationMetadata importingClassMetadata) {
-        return new String[]{RpcDefinitionRegistrar.class.getName()};
+        List<String> definitionRegistrars = new ArrayList<>();
+        Map<String, Object> annotationAttributes = importingClassMetadata.getAnnotationAttributes(EnableSimpleRpc.class.getCanonicalName());
+        if (annotationAttributes != null) {
+            RpcMode[] rpcModes = (RpcMode[]) annotationAttributes.get("mode");
+            for (RpcMode rpcMode : rpcModes) {
+                switch (rpcMode) {
+                    case RPC_CLIENT:
+                        definitionRegistrars.add(RpcClientScannerRegistrar.class.getName());
+                        break;
+                    case RPC_SERVER:
+                        definitionRegistrars.add(RpcServerScannerRegistrar.class.getName());
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+        return definitionRegistrars.toArray(new String[0]);
     }
 
 }

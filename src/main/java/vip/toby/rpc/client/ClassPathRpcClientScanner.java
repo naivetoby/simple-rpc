@@ -29,11 +29,11 @@ public class ClassPathRpcClientScanner extends ClassPathBeanDefinitionScanner {
 
     void registerFilters() {
         addIncludeFilter(new AnnotationTypeFilter(RpcClient.class));
-        // exclude package-info.java
-        addExcludeFilter((metadataReader, metadataReaderFactory) -> {
-            String className = metadataReader.getClassMetadata().getClassName();
-            return className.endsWith("package-info");
-        });
+    }
+
+    @Override
+    protected boolean isCandidateComponent(AnnotatedBeanDefinition beanDefinition) {
+        return beanDefinition.getMetadata().isInterface() && beanDefinition.getMetadata().isIndependent();
     }
 
     @Override
@@ -59,11 +59,6 @@ public class ClassPathRpcClientScanner extends ClassPathBeanDefinitionScanner {
             // 采用按照类型注入的方式
             rpcClientBeanDefinition.setAutowireMode(AbstractBeanDefinition.AUTOWIRE_BY_TYPE);
         }
-    }
-
-    @Override
-    protected boolean isCandidateComponent(AnnotatedBeanDefinition beanDefinition) {
-        return beanDefinition.getMetadata().isInterface() && beanDefinition.getMetadata().isIndependent();
     }
 
 }
