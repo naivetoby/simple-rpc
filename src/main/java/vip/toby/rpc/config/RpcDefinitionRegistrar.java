@@ -1,6 +1,8 @@
 package vip.toby.rpc.config;
 
 import org.springframework.amqp.core.*;
+import org.springframework.amqp.rabbit.annotation.RabbitListenerAnnotationBeanPostProcessor;
+import org.springframework.amqp.rabbit.config.RabbitListenerConfigUtils;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
@@ -10,10 +12,7 @@ import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;
-import org.springframework.beans.factory.support.AbstractBeanDefinition;
-import org.springframework.beans.factory.support.BeanDefinitionBuilder;
-import org.springframework.beans.factory.support.BeanDefinitionRegistry;
-import org.springframework.beans.factory.support.GenericBeanDefinition;
+import org.springframework.beans.factory.support.*;
 import org.springframework.boot.autoconfigure.AutoConfigurationPackages;
 import org.springframework.context.EnvironmentAware;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
@@ -73,10 +72,19 @@ public class RpcDefinitionRegistrar implements ImportBeanDefinitionRegistrar, En
 
     @Override
     public void registerBeanDefinitions(AnnotationMetadata metadata, BeanDefinitionRegistry registry) {
+
+        if (!registry.containsBeanDefinition(
+                RabbitListenerConfigUtils.RABBIT_LISTENER_ANNOTATION_PROCESSOR_BEAN_NAME)) {
+
+            registry.registerBeanDefinition(RabbitListenerConfigUtils.RABBIT_LISTENER_ANNOTATION_PROCESSOR_BEAN_NAME,
+                    new RootBeanDefinition(RabbitListenerAnnotationBeanPostProcessor.class));
+        }
+        // 强制初始化RpcRabbitProperties
+//        this.beanFactory.getBean(RpcRabbitProperties.class);
         // 强制初始化ConnectionFactory
         this.connectionFactory = this.beanFactory.getBean(ConnectionFactory.class);
         // 强制初始化AmqpAdmin
-        this.beanFactory.getBean(AmqpAdmin.class);
+//        this.beanFactory.getBean(AmqpAdmin.class);
         // 开始扫描默认包路径
         String[] basePackages = StringUtils.toStringArray(AutoConfigurationPackages.get(this.beanFactory));
         // 扫描 RpcClient 注解
