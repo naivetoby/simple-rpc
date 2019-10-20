@@ -19,13 +19,13 @@ public class RpcClientScannerConfigurer implements BeanDefinitionRegistryPostPro
     private String basePackage;
     private ApplicationContext applicationContext;
 
-    public void setBasePackage(String basePackage) {
-        this.basePackage = basePackage;
-    }
-
     @Override
     public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
         this.applicationContext = applicationContext;
+    }
+
+    public void setBasePackage(String basePackage) {
+        this.basePackage = basePackage;
     }
 
     @Override
