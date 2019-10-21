@@ -50,10 +50,10 @@ public class RpcClientProxy implements InvocationHandler {
             return method.invoke(this, args);
         }
         if (this.rpcType == RpcType.ASYNC && method.getGenericReturnType() != void.class) {
-            throw new RuntimeException("异步 RpcClient 返回类型只能为 void, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
+            throw new RuntimeException("ASYNC-RpcClient 返回类型只能为 void, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
         }
         if (this.rpcType == RpcType.SYNC && method.getGenericReturnType() != RpcResult.class) {
-            throw new RuntimeException("同步 RpcClient 返回类型只能为 RpcResult, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
+            throw new RuntimeException("SYNC-RpcClient 返回类型只能为 RpcResult, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
         }
         String methodName = rpcClientMethod.value();
         if (StringUtils.isBlank(methodName)) {
@@ -70,7 +70,7 @@ public class RpcClientProxy implements InvocationHandler {
             if (param != null && StringUtils.isNotBlank(param.value())) {
                 paramName = param.value();
             } else {
-                LOGGER.warn("注解@Param为空或未加注解@Param的参数名, Param: " + paramName + ", Class:" + this.rpcClientInterface.getName() + ", Method: " + method.getName());
+                LOGGER.warn("RpcClientMethod: " + methodName + ", 未加@Param或@Param的值为空");
             }
             data.put(paramName, args[i]);
         }
@@ -85,10 +85,11 @@ public class RpcClientProxy implements InvocationHandler {
                 return null;
             }
             // 发起请求并返回结果
+            long start = System.currentTimeMillis();
             Object resultObj = sender.convertSendAndReceive(paramDataJsonString);
             if (resultObj == null) {
                 // 无返回任何结果，说明服务器负载过高，没有及时处理请求，导致超时
-                LOGGER.error("Simple-Rpc Call Timeout, ParamData: " + paramDataJsonString);
+                LOGGER.error("RpcClientMethod: " + methodName + ", Service Unavailable, Duration: " + (System.currentTimeMillis() - start) + "ms, Param: " + paramDataJsonString);
                 return new RpcResult(ServerStatus.UNAVAILABLE);
             }
             // 获取调用结果的状态
@@ -97,13 +98,14 @@ public class RpcClientProxy implements InvocationHandler {
             Object resultData = resultJson.get("data");
             ServerStatus serverStatus = ServerStatus.getServerStatus(status);
             if (serverStatus != ServerStatus.SUCCESS || resultData == null) {
-                LOGGER.error("Simple-Rpc Call Error, Cause: " + serverStatus.getMessage() + ", ParamData: " + paramDataJsonString);
+                LOGGER.error("RpcClientMethod: " + methodName + ", " + serverStatus.getMessage() + ", Duration: " + (System.currentTimeMillis() - start) + "ms, Param: " + paramDataJsonString);
                 return new RpcResult(ServerStatus.getServerStatus(status));
             }
-            LOGGER.debug("Simple-Rpc Call Success, Result: " + JSON.toJSONString(resultData));
             // 获取操作层的状态
             JSONObject serverResultJson = JSON.parseObject(resultData.toString());
-            return new RpcResult(new ServerResult(OperateStatus.getOperateStatus(serverResultJson.getIntValue("status")), serverResultJson.getString("message"), (JSON) serverResultJson.get("result"), serverResultJson.getIntValue("errorCode")));
+            RpcResult rpcResult = new RpcResult(new ServerResult(OperateStatus.getOperateStatus(serverResultJson.getIntValue("status")), serverResultJson.getString("message"), (JSON) serverResultJson.get("result"), serverResultJson.getIntValue("errorCode")));
+            LOGGER.debug("RpcClientMethod: " + methodName + ", Call Success, Duration: " + (System.currentTimeMillis() - start) + "ms, RpcResult: " + rpcResult.toString());
+            return rpcResult;
         } catch (Exception e) {
             LOGGER.error(e.getMessage(), e);
             throw new RuntimeException(e);

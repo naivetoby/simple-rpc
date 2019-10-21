@@ -139,7 +139,7 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
         BeanDefinition beanDefinition = beanDefinitionBuilder.getRawBeanDefinition();
         BeanDefinitionRegistry beanFactory = (BeanDefinitionRegistry) (applicationContext).getBeanFactory();
         if (beanFactory.isBeanNameInUse(name)) {
-            throw new RuntimeException("Bean: " + name + " 实例化时发生重复");
+            throw new RuntimeException("BeanName: " + name + " 重复");
         }
         beanFactory.registerBeanDefinition(name, beanDefinition);
         return applicationContext.getBean(name, clazz);

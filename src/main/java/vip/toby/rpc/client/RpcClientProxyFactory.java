@@ -158,7 +158,7 @@ public class RpcClientProxyFactory implements FactoryBean, BeanFactoryAware {
         BeanDefinition beanDefinition = beanDefinitionBuilder.getRawBeanDefinition();
         BeanDefinitionRegistry beanDefinitionRegistry = (BeanDefinitionRegistry) this.beanFactory;
         if (beanDefinitionRegistry.isBeanNameInUse(name)) {
-            throw new RuntimeException("Bean: " + name + " 实例化时发生重复");
+            throw new RuntimeException("BeanName: " + name + " 重复");
         }
         beanDefinitionRegistry.registerBeanDefinition(name, beanDefinition);
         return this.beanFactory.getBean(name, clazz);

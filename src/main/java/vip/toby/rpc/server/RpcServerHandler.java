@@ -62,24 +62,24 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                 }
                 String key = this.rpcType.getName() + "_" + this.rpcName + "_" + methodName;
                 if (FAST_METHOD_MAP.containsKey(key)) {
-                    throw new RuntimeException("Method: " + methodName + " 重复");
+                    throw new RuntimeException("Class: " + rpcServerClass.getName() + ", Method: " + methodName + " 重复");
                 }
                 FastMethod fastMethod = FastClass.create(rpcServerClass).getMethod(targetMethod.getName(), new Class[]{JSONObject.class});
                 if (fastMethod == null) {
-                    throw new RuntimeException("反射失败, Class: " + rpcServerClass.getName() + ", Method: " + targetMethod.getName());
+                    throw new RuntimeException("Class: " + rpcServerClass.getName() + ", Method: " + targetMethod.getName() + " Invoke Exception");
                 }
                 if (fastMethod.getReturnType() != ServerResult.class) {
                     throw new RuntimeException("返回类型只能为 ServerResult, Class: " + rpcServerClass.getName() + ", Method: " + fastMethod.getName());
                 }
                 Class<?>[] parameterTypes = fastMethod.getParameterTypes();
                 if (parameterTypes == null || parameterTypes.length != 1 || parameterTypes[0] != JSONObject.class) {
-                    throw new RuntimeException("参数类型只能为 JSONObject, Class: " + rpcServerClass.getName() + ", Method: " + fastMethod.getName());
+                    throw new RuntimeException("只能包含唯一参数且参数类型只能为 JSONObject, Class: " + rpcServerClass.getName() + ", Method: " + fastMethod.getName());
                 }
                 FAST_METHOD_MAP.put(key, fastMethod);
-                LOGGER.debug("接口注册成功, " + this.rpcType.getName() + "-RpcServer:-" + this.rpcName + ", Method: " + methodName);
+                LOGGER.debug(this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + methodName + " Created");
             }
         }
-        LOGGER.info(this.rpcType.getName() + "-RpcServer-" + this.rpcName + " 已启动");
+        LOGGER.info(this.rpcType.getName() + "-RpcServer-" + this.rpcName + " Started");
     }
 
     @Override
@@ -92,7 +92,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
             messageStr = new String(message.getBody(), StandardCharsets.UTF_8);
             // 打印
             if (!LOGGER.isDebugEnabled()) {
-                LOGGER.info(this.rpcType.getName() + "-RpcServer-" + this.rpcName + " 接收到消息: " + messageStr);
+                LOGGER.info(this.rpcType.getName() + "-RpcServer-" + this.rpcName + " Receive: " + messageStr);
             }
             // 构建返回JSON值
             JSONObject resultJson = new JSONObject();
@@ -104,9 +104,9 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                     long start = System.currentTimeMillis();
                     asyncExecute(paramData);
                     double offset = System.currentTimeMillis() - start;
-                    LOGGER.debug(this.rpcType.getName() + "-RpcServer-" + this.rpcName + " 接收到消息: " + messageStr + ", 耗时: " + offset + "ms");
+                    LOGGER.debug("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + " Receive: " + messageStr);
                     if (offset > this.slowCallTime) {
-                        LOGGER.warn(this.rpcType.getName() + "-RpcServer-" + this.rpcName + " 调用时间过长, 耗时: " + offset + "ms");
+                        LOGGER.warn("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + " Call Slowing");
                     }
                     return;
                 }
@@ -115,9 +115,9 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                 JSONObject data = syncExecute(paramData);
                 if (data != null) {
                     double offset = System.currentTimeMillis() - start;
-                    LOGGER.debug(this.rpcType.getName() + "-RpcServer-" + this.rpcName + " 接收到消息: " + messageStr + ", 耗时: " + offset + "ms");
+                    LOGGER.debug("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + " Receive: " + messageStr);
                     if (offset > this.slowCallTime) {
-                        LOGGER.warn(this.rpcType.getName() + "-RpcServer-" + this.rpcName + " 调用时间过长, 耗时: " + offset + "ms");
+                        LOGGER.warn("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + " Call Slowing");
                     }
                     // 修改状态
                     serverStatus = ServerStatus.SUCCESS;
@@ -166,7 +166,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
         // 通过缓存来优化性能
         FastMethod fastMethod = FAST_METHOD_MAP.get(key);
         if (fastMethod == null) {
-            LOGGER.error("接口不存在, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command);
+            LOGGER.error(this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + " Not Found");
             return;
         }
         // 获取data数据
@@ -192,7 +192,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
         // 通过缓存来优化性能
         FastMethod fastMethod = FAST_METHOD_MAP.get(key);
         if (fastMethod == null) {
-            LOGGER.error("接口不存在, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command);
+            LOGGER.error(this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + " Not Found");
             return null;
         }
         // 获取data数据
