@@ -16,7 +16,7 @@ import java.lang.annotation.*;
 @Component
 public @interface RpcServer {
 
-    String name();
+    String value();
 
     int xMessageTTL() default 1000;
 

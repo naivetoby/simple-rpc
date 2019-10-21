@@ -47,7 +47,7 @@ public class RpcClientProxyFactory implements FactoryBean, BeanFactoryAware {
     public Object getObject() throws Exception {
         RabbitTemplate sender;
         RpcClient rpcClient = this.rpcClientInterface.getAnnotation(RpcClient.class);
-        String rpcName = rpcClient.name();
+        String rpcName = rpcClient.value();
         RpcType rpcType = rpcClient.type();
         int replyTimeout = rpcClient.replyTimeout();
         int maxAttempts = rpcClient.maxAttempts();

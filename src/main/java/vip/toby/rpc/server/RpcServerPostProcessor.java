@@ -61,7 +61,7 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
      * 启动服务监听
      */
     private void rpcServerStart(Object rpcServerBean, RpcServer rpcServer) {
-        String rpcName = rpcServer.name();
+        String rpcName = rpcServer.value();
         for (RpcType rpcType : rpcServer.type()) {
             switch (rpcType) {
                 case SYNC:
@@ -94,8 +94,8 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
     /**
      * 实例化 Binding
      */
-    private Binding binding(String rpcName, RpcType rpcType, Queue queue) {
-        return registerBean(this.applicationContext, rpcType.getValue() + "_" + rpcName + "_Binding", Binding.class, queue.getName(), Binding.DestinationType.QUEUE, getDirectExchange(rpcType).getName(), queue.getName(), Collections.<String, Object>emptyMap());
+    private void binding(String rpcName, RpcType rpcType, Queue queue) {
+        registerBean(this.applicationContext, rpcType.getValue() + "_" + rpcName + "_Binding", Binding.class, queue.getName(), Binding.DestinationType.QUEUE, getDirectExchange(rpcType).getName(), queue.getName(), Collections.<String, Object>emptyMap());
     }
 
     /**
@@ -108,13 +108,12 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
     /**
      * 实例化 SimpleMessageListenerContainer
      */
-    private SimpleMessageListenerContainer messageListenerContainer(String rpcName, RpcType rpcType, Queue queue, RpcServerHandler rpcServerHandler, int threadNum) {
+    private void messageListenerContainer(String rpcName, RpcType rpcType, Queue queue, RpcServerHandler rpcServerHandler, int threadNum) {
         SimpleMessageListenerContainer messageListenerContainer = registerBean(this.applicationContext, rpcType.getValue() + "_" + rpcName + "_MessageListenerContainer", SimpleMessageListenerContainer.class, this.connectionFactory);
         messageListenerContainer.setQueueNames(queue.getName());
         messageListenerContainer.setMessageListener(rpcServerHandler);
         messageListenerContainer.setAcknowledgeMode(AcknowledgeMode.MANUAL);
         messageListenerContainer.setConcurrentConsumers(threadNum);
-        return messageListenerContainer;
     }
 
     private DirectExchange getDirectExchange(RpcType rpcType) {
