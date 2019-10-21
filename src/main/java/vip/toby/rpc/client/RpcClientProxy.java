@@ -49,8 +49,11 @@ public class RpcClientProxy implements InvocationHandler {
         if (rpcClientMethod == null) {
             return method.invoke(this, args);
         }
-        if (method.getGenericReturnType() != RpcResult.class) {
-            throw new RuntimeException("返回类型只能为 RpcResult, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
+        if (this.rpcType == RpcType.ASYNC && method.getGenericReturnType() != Void.class) {
+            throw new RuntimeException("异步 RpcClient 返回类型只能为 Void, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
+        }
+        if (this.rpcType == RpcType.SYNC && method.getGenericReturnType() != RpcResult.class) {
+            throw new RuntimeException("同步 RpcClient 返回类型只能为 RpcResult, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
         }
         String methodName = rpcClientMethod.value();
         if (StringUtils.isBlank(methodName)) {
@@ -79,7 +82,7 @@ public class RpcClientProxy implements InvocationHandler {
         try {
             if (this.rpcType == RpcType.ASYNC) {
                 sender.convertAndSend(paramDataJsonString);
-                return new RpcResult(new ServerResult(OperateStatus.SUCCESS, OperateStatus.SUCCESS.getMessage(), new JSONObject(), 0));
+                return null;
             }
             // 发起请求并返回结果
             Object resultObj = sender.convertSendAndReceive(paramDataJsonString);
@@ -103,8 +106,8 @@ public class RpcClientProxy implements InvocationHandler {
             return new RpcResult(new ServerResult(OperateStatus.getOperateStatus(serverResultJson.getIntValue("status")), serverResultJson.getString("message"), (JSON) serverResultJson.get("result"), serverResultJson.getIntValue("errorCode")));
         } catch (Exception e) {
             LOGGER.error(e.getMessage(), e);
+            throw new RuntimeException(e);
         }
-        return new RpcResult(ServerStatus.FAILURE);
     }
 
     @Override
