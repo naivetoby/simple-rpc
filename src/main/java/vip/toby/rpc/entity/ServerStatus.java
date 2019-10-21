@@ -43,4 +43,9 @@ public enum ServerStatus {
         }
         return FAILURE;
     }
+
+    @Override
+    public String toString() {
+        return "{" + "status=" + status + ", message='" + message + '}';
+    }
 }
