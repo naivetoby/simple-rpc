@@ -78,21 +78,21 @@ public class RpcClientProxyFactory implements FactoryBean, BeanFactoryAware {
      * 实例化 replyQueue
      */
     private Queue replyQueue(String rpcName, String rabbitClientId) {
-        return registerBean(RpcType.SYNC.getValue() + "-ReplyQueue-" + rpcName, Queue.class, rpcName + ".reply." + rabbitClientId, false, false, true);
+        return registerBean(RpcType.SYNC.getName() + "-ReplyQueue-" + rpcName, Queue.class, rpcName + ".reply." + rabbitClientId, false, false, true);
     }
 
     /**
      * 实例化 ReplyBinding
      */
     private void replyBinding(String rpcName, Queue queue) {
-        registerBean(RpcType.SYNC.getValue() + "-ReplyBinding-" + rpcName, Binding.class, queue.getName(), Binding.DestinationType.QUEUE, getSyncReplyDirectExchange().getName(), queue.getName(), Collections.<String, Object>emptyMap());
+        registerBean(RpcType.SYNC.getName() + "-ReplyBinding-" + rpcName, Binding.class, queue.getName(), Binding.DestinationType.QUEUE, getSyncReplyDirectExchange().getName(), queue.getName(), Collections.<String, Object>emptyMap());
     }
 
     /**
      * 实例化 ReplyMessageListenerContainer
      */
     private SimpleMessageListenerContainer replyMessageListenerContainer(String rpcName, Queue queue, RabbitTemplate syncSender, ConnectionFactory connectionFactory) {
-        SimpleMessageListenerContainer replyMessageListenerContainer = registerBean(RpcType.SYNC.getValue() + "-ReplyMessageListenerContainer-" + rpcName, SimpleMessageListenerContainer.class, connectionFactory);
+        SimpleMessageListenerContainer replyMessageListenerContainer = registerBean(RpcType.SYNC.getName() + "-ReplyMessageListenerContainer-" + rpcName, SimpleMessageListenerContainer.class, connectionFactory);
         replyMessageListenerContainer.setQueueNames(queue.getName());
         replyMessageListenerContainer.setMessageListener(syncSender);
         return replyMessageListenerContainer;
@@ -102,7 +102,7 @@ public class RpcClientProxyFactory implements FactoryBean, BeanFactoryAware {
      * 实例化 AsyncSender
      */
     private RabbitTemplate asyncSender(String rpcName, ConnectionFactory connectionFactory) {
-        RabbitTemplate asyncSender = registerBean(RpcType.ASYNC.getValue() + "-Sender-" + rpcName, RabbitTemplate.class, connectionFactory);
+        RabbitTemplate asyncSender = registerBean(RpcType.ASYNC.getName() + "-Sender-" + rpcName, RabbitTemplate.class, connectionFactory);
         asyncSender.setDefaultReceiveQueue(rpcName + ".async");
         asyncSender.setRoutingKey(rpcName + ".async");
         return asyncSender;
@@ -116,7 +116,7 @@ public class RpcClientProxyFactory implements FactoryBean, BeanFactoryAware {
         simpleRetryPolicy.setMaxAttempts(maxAttempts);
         RetryTemplate retryTemplate = new RetryTemplate();
         retryTemplate.setRetryPolicy(simpleRetryPolicy);
-        RabbitTemplate syncSender = registerBean(RpcType.SYNC.getValue() + "-Sender-" + rpcName, RabbitTemplate.class, connectionFactory);
+        RabbitTemplate syncSender = registerBean(RpcType.SYNC.getName() + "-Sender-" + rpcName, RabbitTemplate.class, connectionFactory);
         syncSender.setDefaultReceiveQueue(rpcName);
         syncSender.setRoutingKey(rpcName);
         syncSender.setReplyAddress(replyQueue.getName());

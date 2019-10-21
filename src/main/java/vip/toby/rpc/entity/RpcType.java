@@ -8,26 +8,20 @@ package vip.toby.rpc.entity;
 public enum RpcType {
 
     // 同步
-    SYNC(0, "SYNC", "同步"),
+    SYNC(0, "SYNC"),
     // 异步
-    ASYNC(1, "ASYNC", "异步");
+    ASYNC(1, "ASYNC");
 
     private int type;
-    private String value;
     private String name;
 
-    RpcType(int type, String value, String name) {
+    RpcType(int type, String name) {
         this.type = type;
-        this.value = value;
         this.name = name;
     }
 
     public int getType() {
         return type;
-    }
-
-    public String getValue() {
-        return value;
     }
 
     public String getName() {
