@@ -12,7 +12,9 @@ public enum ServerStatus {
     // 调用失败
     FAILURE(0, "调用失败"),
     // 调用不存在
-    NOT_EXIST(-1, "调用不存在");
+    NOT_EXIST(-1, "调用不存在"),
+    // 调用超时, 服务不可用
+    UNAVAILABLE(-2, "调用超时, 服务不可用");
 
     private int status;
     private String message;

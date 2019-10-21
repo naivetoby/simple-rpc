@@ -20,7 +20,7 @@ public enum ErrorCode {
     // 服务器内部错误
     INTERNAL_SERVER_ERROR(500, "Internal Server Error"),
     // 服务不可用
-    Service_Unavailable(503, "Service Unavailable"),
+    SERVICE_UNAVAILABLE(503, "Service Unavailable"),
     // 请求超时(服务器负载过高，未能及时处理请求)
     GATEWAY_TIMEOUT(504, "Gateway Timeout");
 

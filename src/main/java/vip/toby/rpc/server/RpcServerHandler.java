@@ -190,7 +190,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
             throw new RuntimeException("Data 参数错误");
         }
         // 通过反射来调用方法
-        return (JSONObject) fastMethod.invoke(this.rpcServerBean, new Object[]{param});
+        return JSONObject.parseObject(fastMethod.invoke(this.rpcServerBean, new Object[]{param}).toString());
     }
 
 }
