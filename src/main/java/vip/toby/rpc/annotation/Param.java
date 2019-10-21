@@ -7,10 +7,10 @@ import java.lang.annotation.*;
  *
  * @author toby
  */
-@Target({ElementType.METHOD})
+@Target({ElementType.PARAMETER})
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 public @interface Param {
 
-    String value() default "";
+    String value();
 }

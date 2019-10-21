@@ -64,7 +64,12 @@ public class RpcClientProxy implements InvocationHandler {
                 Parameter parameter = parameters[i];
                 Param param = parameter.getAnnotation(Param.class);
                 if (param != null) {
-                    paramNames[i] = param.value();
+                    if (StringUtils.isNotBlank(param.value())) {
+                        paramNames[i] = param.value();
+                    } else {
+                        // 方式三, 需要加上-parameters编译参数
+                        paramNames[i] = parameters[i].getName();
+                    }
                 } else {
                     // 方式三, 需要加上-parameters编译参数
                     paramNames[i] = parameters[i].getName();
