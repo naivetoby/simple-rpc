@@ -16,6 +16,7 @@ import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Value;
 import vip.toby.rpc.annotation.RpcServerMethod;
 import vip.toby.rpc.entity.RpcType;
+import vip.toby.rpc.entity.ServerResult;
 import vip.toby.rpc.entity.ServerStatus;
 
 import java.io.IOException;
@@ -64,10 +65,18 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                     throw new RuntimeException("Method: " + methodName + " 重复");
                 }
                 FastMethod fastMethod = FastClass.create(rpcServerClass).getMethod(targetMethod.getName(), new Class[]{JSONObject.class});
-                if (fastMethod != null) {
-                    FAST_METHOD_MAP.put(key, fastMethod);
-                    LOGGER.debug("接口注册成功, " + this.rpcType.getName() + " RpcServer: " + this.rpcName + ", Method: " + methodName);
+                if (fastMethod == null) {
+                    throw new RuntimeException("反射失败, Class: " + rpcServerClass.getName() + ", Method: " + targetMethod.getName());
                 }
+                if (fastMethod.getReturnType() != ServerResult.class) {
+                    throw new RuntimeException("返回类型只能为ServerResult, Class: " + rpcServerClass.getName() + ", Method: " + fastMethod.getName());
+                }
+                Class<?>[] parameterTypes = fastMethod.getParameterTypes();
+                if (parameterTypes == null || parameterTypes.length != 1 || parameterTypes[0] != JSONObject.class) {
+                    throw new RuntimeException("参数类型只能为JSONObject, Class: " + rpcServerClass.getName() + ", Method: " + fastMethod.getName());
+                }
+                FAST_METHOD_MAP.put(key, fastMethod);
+                LOGGER.debug("接口注册成功, " + this.rpcType.getName() + " RpcServer: " + this.rpcName + ", Method: " + methodName);
             }
         }
         LOGGER.info(this.rpcType.getName() + " RpcServer: " + this.rpcName + " 已启动");
