@@ -91,7 +91,9 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
             messageProperties = message.getMessageProperties();
             messageStr = new String(message.getBody(), StandardCharsets.UTF_8);
             // 打印
-            LOGGER.info(this.rpcType.getName() + " RpcServer: " + this.rpcName + " 接收到消息: " + messageStr);
+            if (!LOGGER.isDebugEnabled()) {
+                LOGGER.info(this.rpcType.getName() + " RpcServer: " + this.rpcName + " 接收到消息: " + messageStr);
+            }
             // 构建返回JSON值
             JSONObject resultJson = new JSONObject();
             try {
@@ -102,9 +104,9 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                     long start = System.currentTimeMillis();
                     asyncExecute(paramData);
                     double offset = System.currentTimeMillis() - start;
-                    LOGGER.info("耗时: " + offset + "ms, paramData: " + paramData);
+                    LOGGER.debug(this.rpcType.getName() + " RpcServer: " + this.rpcName + " 接收到消息: " + messageStr + ", 耗时: " + offset + "ms");
                     if (offset > this.slowCallTime) {
-                        LOGGER.warn(this.rpcType.getName() + " RpcServer: " + this.rpcName + " 调用时间过长, 共耗时: " + offset + "ms, paramData: " + paramData);
+                        LOGGER.warn(this.rpcType.getName() + " RpcServer: " + this.rpcName + " 调用时间过长, 耗时: " + offset + "ms");
                     }
                     return;
                 }
@@ -113,9 +115,9 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                 JSONObject data = syncExecute(paramData);
                 if (data != null) {
                     double offset = System.currentTimeMillis() - start;
-                    LOGGER.info("耗时: " + offset + "ms, paramData: " + paramData);
+                    LOGGER.debug(this.rpcType.getName() + " RpcServer: " + this.rpcName + " 接收到消息: " + messageStr + ", 耗时: " + offset + "ms");
                     if (offset > this.slowCallTime) {
-                        LOGGER.warn(this.rpcType.getName() + " RpcServer: " + this.rpcName + " 调用时间过长, 共耗时: " + offset + "ms, paramData: " + paramData);
+                        LOGGER.warn(this.rpcType.getName() + " RpcServer: " + this.rpcName + " 调用时间过长, 耗时: " + offset + "ms");
                     }
                     // 修改状态
                     serverStatus = ServerStatus.SUCCESS;

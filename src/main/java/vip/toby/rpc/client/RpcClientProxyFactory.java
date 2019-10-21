@@ -46,6 +46,7 @@ public class RpcClientProxyFactory implements FactoryBean, BeanFactoryAware {
     @Override
     public Object getObject() throws Exception {
         RabbitTemplate sender;
+        SimpleMessageListenerContainer replyMessageListenerContainer = null;
         RpcClient rpcClient = this.rpcClientInterface.getAnnotation(RpcClient.class);
         String rpcName = rpcClient.value();
         RpcType rpcType = rpcClient.type();
@@ -55,12 +56,12 @@ public class RpcClientProxyFactory implements FactoryBean, BeanFactoryAware {
             Queue replyQueue = replyQueue(rpcName, UUID.randomUUID().toString());
             replyBinding(rpcName, replyQueue);
             RabbitTemplate syncSender = syncSender(rpcName, replyQueue, replyTimeout, maxAttempts, getConnectionFactory());
-            replyMessageListenerContainer(rpcName, replyQueue, syncSender, getConnectionFactory());
+            replyMessageListenerContainer = replyMessageListenerContainer(rpcName, replyQueue, syncSender, getConnectionFactory());
             sender = syncSender;
         } else {
             sender = asyncSender(rpcName, getConnectionFactory());
         }
-        return Proxy.newProxyInstance(this.rpcClientInterface.getClassLoader(), new Class[]{this.rpcClientInterface}, new RpcClientProxy(this.rpcClientInterface, rpcName, rpcType, sender));
+        return Proxy.newProxyInstance(this.rpcClientInterface.getClassLoader(), new Class[]{this.rpcClientInterface}, new RpcClientProxy(this.rpcClientInterface, rpcName, rpcType, sender, replyMessageListenerContainer));
     }
 
     @Override
@@ -90,10 +91,11 @@ public class RpcClientProxyFactory implements FactoryBean, BeanFactoryAware {
     /**
      * 实例化 ReplyMessageListenerContainer
      */
-    private void replyMessageListenerContainer(String rpcName, Queue queue, RabbitTemplate syncSender, ConnectionFactory connectionFactory) {
+    private SimpleMessageListenerContainer replyMessageListenerContainer(String rpcName, Queue queue, RabbitTemplate syncSender, ConnectionFactory connectionFactory) {
         SimpleMessageListenerContainer replyMessageListenerContainer = registerBean(RpcType.SYNC.getValue() + "_" + rpcName + "_ReplyMessageListenerContainer", SimpleMessageListenerContainer.class, connectionFactory);
         replyMessageListenerContainer.setQueueNames(queue.getName());
         replyMessageListenerContainer.setMessageListener(syncSender);
+        return replyMessageListenerContainer;
     }
 
     /**
