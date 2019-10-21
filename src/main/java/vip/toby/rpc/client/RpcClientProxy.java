@@ -72,7 +72,7 @@ public class RpcClientProxy implements InvocationHandler {
         try {
             if (this.rpcType == RpcType.ASYNC) {
                 sender.convertAndSend(paramDataJsonString);
-                return null;
+                return new RpcResult(new ServerResult(OperateStatus.SUCCESS, OperateStatus.SUCCESS.getMessage(), new JSONObject(), 0));
             }
             // 发起请求并返回结果
             Object resultObj = sender.convertSendAndReceive(paramDataJsonString);
