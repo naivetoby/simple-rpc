@@ -112,7 +112,7 @@ public class RpcClientProxy implements InvocationHandler {
 
     @Override
     public String toString() {
-        return this.rpcName + "_Client";
+        return this.rpcType.getValue() + "-RpcClient-" + this.rpcName;
     }
 
 }

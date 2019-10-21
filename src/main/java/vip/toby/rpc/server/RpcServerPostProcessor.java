@@ -88,28 +88,28 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
      * 实例化 Queue
      */
     private Queue queue(String rpcName, RpcType rpcType, Map<String, Object> params) {
-        return registerBean(this.applicationContext, rpcType.getValue() + "_" + rpcName + "_Queue", Queue.class, rpcType == RpcType.ASYNC ? (rpcName + ".async") : rpcName, true, false, false, params);
+        return registerBean(this.applicationContext, rpcType.getValue() + "-Queue-" + rpcName, Queue.class, rpcType == RpcType.ASYNC ? (rpcName + ".async") : rpcName, true, false, false, params);
     }
 
     /**
      * 实例化 Binding
      */
     private void binding(String rpcName, RpcType rpcType, Queue queue) {
-        registerBean(this.applicationContext, rpcType.getValue() + "_" + rpcName + "_Binding", Binding.class, queue.getName(), Binding.DestinationType.QUEUE, getDirectExchange(rpcType).getName(), queue.getName(), Collections.<String, Object>emptyMap());
+        registerBean(this.applicationContext, rpcType.getValue() + "-Binding-" + rpcName, Binding.class, queue.getName(), Binding.DestinationType.QUEUE, getDirectExchange(rpcType).getName(), queue.getName(), Collections.<String, Object>emptyMap());
     }
 
     /**
      * 实例化 RpcServerHandler
      */
     private RpcServerHandler rpcServerHandler(String rpcName, RpcType rpcType, Object rpcServerBean) {
-        return registerBean(this.applicationContext, rpcType.getValue() + "_" + rpcName + "_RpcServerHandler", RpcServerHandler.class, rpcServerBean, rpcName, rpcType);
+        return registerBean(this.applicationContext, rpcType.getValue() + "-RpcServerHandler-" + rpcName, RpcServerHandler.class, rpcServerBean, rpcName, rpcType);
     }
 
     /**
      * 实例化 SimpleMessageListenerContainer
      */
     private void messageListenerContainer(String rpcName, RpcType rpcType, Queue queue, RpcServerHandler rpcServerHandler, int threadNum) {
-        SimpleMessageListenerContainer messageListenerContainer = registerBean(this.applicationContext, rpcType.getValue() + "_" + rpcName + "_MessageListenerContainer", SimpleMessageListenerContainer.class, this.connectionFactory);
+        SimpleMessageListenerContainer messageListenerContainer = registerBean(this.applicationContext, rpcType.getValue() + "-MessageListenerContainer-" + rpcName, SimpleMessageListenerContainer.class, this.connectionFactory);
         messageListenerContainer.setQueueNames(queue.getName());
         messageListenerContainer.setMessageListener(rpcServerHandler);
         messageListenerContainer.setAcknowledgeMode(AcknowledgeMode.MANUAL);
