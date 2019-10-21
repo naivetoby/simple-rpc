@@ -38,58 +38,59 @@ public class RpcClientProxy implements InvocationHandler {
 
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-        if (Object.class.equals(method.getDeclaringClass())) {
-            return method.invoke(this, args);
-        }
         // 获取方法注解
         RpcClientMethod rpcClientMethod = method.getAnnotation(RpcClientMethod.class);
-        if (rpcClientMethod != null) {
-            String methodName = rpcClientMethod.name();
-            if (StringUtils.isBlank(methodName)) {
-                methodName = method.getName();
+        if (rpcClientMethod == null) {
+            return method.invoke(this, args);
+        }
+        if (!(method.getGenericReturnType() instanceof RpcResult)) {
+            throw new RuntimeException("返回类型只能为RpcResult, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
+        }
+        String methodName = rpcClientMethod.name();
+        if (StringUtils.isBlank(methodName)) {
+            methodName = method.getName();
+        }
+        String[] parameterNames = PARAMETER_NAME_DISCOVERER.getParameterNames(method);
+        if (parameterNames == null || parameterNames.length != args.length) {
+            throw new RuntimeException("获取参数名失败, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
+        }
+        // 组装data
+        JSONObject data = new JSONObject();
+        for (int i = 0; i < args.length; i++) {
+            data.put(parameterNames[i], args[i]);
+        }
+        // 调用参数
+        JSONObject paramData = new JSONObject();
+        paramData.put("command", methodName);
+        paramData.put("data", data);
+        String paramDataJsonString = paramData.toJSONString();
+        try {
+            if (this.rpcType == RpcType.ASYNC) {
+                sender.convertAndSend(paramDataJsonString);
+                return null;
             }
-            String[] parameterNames = PARAMETER_NAME_DISCOVERER.getParameterNames(method);
-            if (parameterNames == null || parameterNames.length != args.length) {
-                throw new RuntimeException("发射方法失败, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
+            // 发起请求并返回结果
+            Object resultObj = sender.convertSendAndReceive(paramDataJsonString);
+            if (resultObj == null) {
+                // 无返回任何结果，说明服务器负载过高，没有及时处理请求，导致超时
+                LOGGER.error("Simple-Rpc Call Timeout, ParamData: " + paramDataJsonString);
+                return new RpcResult(ServerStatus.UNAVAILABLE);
             }
-            // 组装data
-            JSONObject data = new JSONObject();
-            for (int i = 0; i < args.length; i++) {
-                data.put(parameterNames[i], args[i]);
+            // 获取调用结果的状态
+            JSONObject resultJson = JSONObject.parseObject(resultObj.toString());
+            int status = resultJson.getIntValue("status");
+            Object resultData = resultJson.get("data");
+            ServerStatus serverStatus = ServerStatus.getServerStatus(status);
+            if (serverStatus != ServerStatus.SUCCESS || resultData == null) {
+                LOGGER.error("Simple-Rpc Call Error, Cause: " + serverStatus.getMessage() + ", ParamData: " + paramDataJsonString);
+                return new RpcResult(ServerStatus.getServerStatus(status));
             }
-            // 调用参数
-            JSONObject paramData = new JSONObject();
-            paramData.put("command", methodName);
-            paramData.put("data", data);
-            String paramDataJsonString = paramData.toJSONString();
-            try {
-                if (this.rpcType == RpcType.ASYNC) {
-                    sender.convertAndSend(paramDataJsonString);
-                    return null;
-                }
-                // 发起请求并返回结果
-                Object resultObj = sender.convertSendAndReceive(paramDataJsonString);
-                if (resultObj == null) {
-                    // 无返回任何结果，说明服务器负载过高，没有及时处理请求，导致超时
-                    LOGGER.error("Simple-Rpc Call Timeout, ParamData: " + paramDataJsonString);
-                    return new RpcResult(ServerStatus.UNAVAILABLE);
-                }
-                // 获取调用结果的状态
-                JSONObject resultJson = JSONObject.parseObject(resultObj.toString());
-                int status = resultJson.getIntValue("status");
-                Object resultData = resultJson.get("data");
-                ServerStatus serverStatus = ServerStatus.getServerStatus(status);
-                if (serverStatus != ServerStatus.SUCCESS || resultData == null) {
-                    LOGGER.error("Simple-Rpc Call Error, Cause: " + serverStatus.getMessage() + ", ParamData: " + paramDataJsonString);
-                    return new RpcResult(ServerStatus.getServerStatus(status));
-                }
-                LOGGER.debug("Simple-Rpc Call Success, Result: " + JSON.toJSONString(resultData));
-                // 获取操作层的状态
-                JSONObject serverResultJson = JSON.parseObject(resultData.toString());
-                return new RpcResult(new ServerResult(OperateStatus.getOperateStatus(serverResultJson.getIntValue("status")), serverResultJson.getString("message"), (JSON) serverResultJson.get("result"), serverResultJson.getIntValue("errorCode")));
-            } catch (Exception e) {
-                LOGGER.error(e.getMessage(), e);
-            }
+            LOGGER.debug("Simple-Rpc Call Success, Result: " + JSON.toJSONString(resultData));
+            // 获取操作层的状态
+            JSONObject serverResultJson = JSON.parseObject(resultData.toString());
+            return new RpcResult(new ServerResult(OperateStatus.getOperateStatus(serverResultJson.getIntValue("status")), serverResultJson.getString("message"), (JSON) serverResultJson.get("result"), serverResultJson.getIntValue("errorCode")));
+        } catch (Exception e) {
+            LOGGER.error(e.getMessage(), e);
         }
         return new RpcResult(ServerStatus.FAILURE);
     }
