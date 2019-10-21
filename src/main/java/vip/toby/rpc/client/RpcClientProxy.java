@@ -70,7 +70,7 @@ public class RpcClientProxy implements InvocationHandler {
             if (param != null && StringUtils.isNotBlank(param.value())) {
                 paramName = param.value();
             } else {
-                LOGGER.warn("RpcClientMethod: " + methodName + ", 未加@Param或@Param的值为空");
+                LOGGER.warn(this.rpcType.getName() + "-RpcClientMethod: " + methodName + ", 未加@Param或@Param的值为空");
             }
             data.put(paramName, args[i]);
         }
@@ -82,7 +82,7 @@ public class RpcClientProxy implements InvocationHandler {
         try {
             if (this.rpcType == RpcType.ASYNC) {
                 sender.convertAndSend(paramDataJsonString);
-                LOGGER.debug("RpcClientMethod: " + methodName + ", Call Success");
+                LOGGER.debug(this.rpcType.getName() + "-RpcClientMethod: " + methodName + ", Call Success");
                 return null;
             }
             // 发起请求并返回结果
@@ -90,7 +90,7 @@ public class RpcClientProxy implements InvocationHandler {
             Object resultObj = sender.convertSendAndReceive(paramDataJsonString);
             if (resultObj == null) {
                 // 无返回任何结果，说明服务器负载过高，没有及时处理请求，导致超时
-                LOGGER.error("RpcClientMethod: " + methodName + ", Service Unavailable, Duration: " + (System.currentTimeMillis() - start) + "ms, Param: " + paramDataJsonString);
+                LOGGER.error(this.rpcType.getName() + "-RpcClientMethod: " + methodName + ", Service Unavailable, Duration: " + (System.currentTimeMillis() - start) + "ms, Param: " + paramDataJsonString);
                 return new RpcResult(ServerStatus.UNAVAILABLE);
             }
             // 获取调用结果的状态
@@ -99,13 +99,13 @@ public class RpcClientProxy implements InvocationHandler {
             Object resultData = resultJson.get("data");
             ServerStatus serverStatus = ServerStatus.getServerStatus(status);
             if (serverStatus != ServerStatus.SUCCESS || resultData == null) {
-                LOGGER.error("RpcClientMethod: " + methodName + ", " + serverStatus.getMessage() + ", Duration: " + (System.currentTimeMillis() - start) + "ms, Param: " + paramDataJsonString);
+                LOGGER.error(this.rpcType.getName() + "-RpcClientMethod: " + methodName + ", " + serverStatus.getMessage() + ", Duration: " + (System.currentTimeMillis() - start) + "ms, Param: " + paramDataJsonString);
                 return new RpcResult(ServerStatus.getServerStatus(status));
             }
             // 获取操作层的状态
             JSONObject serverResultJson = JSON.parseObject(resultData.toString());
             RpcResult rpcResult = new RpcResult(new ServerResult(OperateStatus.getOperateStatus(serverResultJson.getIntValue("status")), serverResultJson.getString("message"), (JSON) serverResultJson.get("result"), serverResultJson.getIntValue("errorCode")));
-            LOGGER.debug("RpcClientMethod: " + methodName + ", Call Success, Duration: " + (System.currentTimeMillis() - start) + "ms, RpcResult: " + rpcResult.toString());
+            LOGGER.debug(this.rpcType.getName() + "-RpcClientMethod: " + methodName + ", Call Success, Duration: " + (System.currentTimeMillis() - start) + "ms, RpcResult: " + rpcResult.toString());
             return rpcResult;
         } catch (Exception e) {
             LOGGER.error(e.getMessage(), e);
