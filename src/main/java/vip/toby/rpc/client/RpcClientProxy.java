@@ -6,7 +6,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.core.LocalVariableTableParameterNameDiscoverer;
 import vip.toby.rpc.annotation.Param;
 import vip.toby.rpc.annotation.RpcClientMethod;
 import vip.toby.rpc.entity.*;
@@ -23,8 +22,6 @@ import java.lang.reflect.Parameter;
 public class RpcClientProxy implements InvocationHandler {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(RpcClientProxy.class);
-
-    private final static LocalVariableTableParameterNameDiscoverer PARAMETER_NAME_DISCOVERER = new LocalVariableTableParameterNameDiscoverer();
 
     private final Class<?> rpcClientInterface;
     private final String rpcName;
@@ -46,40 +43,26 @@ public class RpcClientProxy implements InvocationHandler {
             return method.invoke(this, args);
         }
         if (method.getGenericReturnType() != RpcResult.class) {
-            throw new RuntimeException("返回类型只能为RpcResult, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
+            throw new RuntimeException("返回类型只能为 RpcResult, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
         }
         String methodName = rpcClientMethod.value();
         if (StringUtils.isBlank(methodName)) {
             methodName = method.getName();
         }
-
-        // 获取参数名
-        // 方式一(暂时不能获取接口的形参)
-        String[] paramNames = PARAMETER_NAME_DISCOVERER.getParameterNames(method);
-        if (paramNames == null) {
-            Parameter[] parameters = method.getParameters();
-            paramNames = new String[args.length];
-            for (int i = 0; i < parameters.length; i++) {
-                // 方式二(通过注解获取)
-                Parameter parameter = parameters[i];
-                Param param = parameter.getAnnotation(Param.class);
-                if (param != null) {
-                    if (StringUtils.isNotBlank(param.value())) {
-                        paramNames[i] = param.value();
-                    } else {
-                        // 方式三, 需要加上-parameters编译参数
-                        paramNames[i] = parameters[i].getName();
-                    }
-                } else {
-                    // 方式三, 需要加上-parameters编译参数
-                    paramNames[i] = parameters[i].getName();
-                }
-            }
-        }
         // 组装data
         JSONObject data = new JSONObject();
-        for (int i = 0; i < args.length; i++) {
-            data.put(paramNames[i], args[i]);
+        Parameter[] parameters = method.getParameters();
+        for (int i = 0; i < parameters.length; i++) {
+            // 需要加上-parameters编译参数, 否则参数名不对
+            String paramName = parameters[i].getName();
+            Parameter parameter = parameters[i];
+            Param param = parameter.getAnnotation(Param.class);
+            if (param != null && StringUtils.isNotBlank(param.value())) {
+                paramName = param.value();
+            } else {
+                LOGGER.warn("未加注解@Param的参数名, Param: " + paramName + ", Class:" + this.rpcClientInterface.getName() + ", Method: " + method.getName());
+            }
+            data.put(paramName, args[i]);
         }
         // 调用参数
         JSONObject paramData = new JSONObject();

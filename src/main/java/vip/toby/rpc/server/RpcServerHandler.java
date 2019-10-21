@@ -69,11 +69,11 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                     throw new RuntimeException("反射失败, Class: " + rpcServerClass.getName() + ", Method: " + targetMethod.getName());
                 }
                 if (fastMethod.getReturnType() != ServerResult.class) {
-                    throw new RuntimeException("返回类型只能为ServerResult, Class: " + rpcServerClass.getName() + ", Method: " + fastMethod.getName());
+                    throw new RuntimeException("返回类型只能为 ServerResult, Class: " + rpcServerClass.getName() + ", Method: " + fastMethod.getName());
                 }
                 Class<?>[] parameterTypes = fastMethod.getParameterTypes();
                 if (parameterTypes == null || parameterTypes.length != 1 || parameterTypes[0] != JSONObject.class) {
-                    throw new RuntimeException("参数类型只能为JSONObject, Class: " + rpcServerClass.getName() + ", Method: " + fastMethod.getName());
+                    throw new RuntimeException("参数类型只能为 JSONObject, Class: " + rpcServerClass.getName() + ", Method: " + fastMethod.getName());
                 }
                 FAST_METHOD_MAP.put(key, fastMethod);
                 LOGGER.debug("接口注册成功, " + this.rpcType.getName() + " RpcServer: " + this.rpcName + ", Method: " + methodName);
