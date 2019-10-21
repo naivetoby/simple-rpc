@@ -60,7 +60,7 @@ public class RpcClientProxy implements InvocationHandler {
             if (param != null && StringUtils.isNotBlank(param.value())) {
                 paramName = param.value();
             } else {
-                LOGGER.warn("未加注解@Param的参数名, Param: " + paramName + ", Class:" + this.rpcClientInterface.getName() + ", Method: " + method.getName());
+                LOGGER.warn("注解@Param为空或未加注解@Param的参数名, Param: " + paramName + ", Class:" + this.rpcClientInterface.getName() + ", Method: " + method.getName());
             }
             data.put(paramName, args[i]);
         }
