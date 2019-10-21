@@ -76,7 +76,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                     throw new RuntimeException("只能包含唯一参数且参数类型只能为 JSONObject, Class: " + rpcServerClass.getName() + ", Method: " + fastMethod.getName());
                 }
                 FAST_METHOD_MAP.put(key, fastMethod);
-                LOGGER.debug(this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + methodName + " Listening");
+                LOGGER.debug(this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + methodName + ", Listening...");
             }
         }
     }
@@ -94,39 +94,51 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
             try {
                 // 组装参数json
                 JSONObject paramData = JSON.parseObject(messageStr);
+                // 获得当前command
+                String command = paramData.getString("command");
+                if (StringUtils.isBlank(command)) {
+                    LOGGER.error("Method Invoke Exception: Command 参数为空, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Received: " + messageStr);
+                    return;
+                }
+                // 获取data数据
+                JSONObject data = paramData.getJSONObject("data");
+                if (data == null) {
+                    LOGGER.error("Method Invoke Exception: Data 参数错误, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Received: " + messageStr);
+                    return;
+                }
                 // 异步执行任务
                 if (RpcType.ASYNC == this.rpcType) {
                     long start = System.currentTimeMillis();
-                    asyncExecute(paramData);
+                    asyncExecute(paramData, command, data);
                     double offset = System.currentTimeMillis() - start;
-                    LOGGER.debug("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Received: " + messageStr);
+                    LOGGER.debug("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Received: " + messageStr);
                     if (offset > this.slowCallTime) {
-                        LOGGER.warn("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + " Slower Called, Received: " + messageStr);
+                        LOGGER.warn("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Slower Called, Received: " + messageStr);
                     }
                     return;
                 }
                 // 同步执行任务并返回结果
                 long start = System.currentTimeMillis();
-                JSONObject data = syncExecute(paramData);
-                if (data != null) {
+                JSONObject resultData = syncExecute(paramData, command, data);
+                if (resultData != null) {
                     double offset = System.currentTimeMillis() - start;
-                    LOGGER.debug("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Received: " + messageStr);
+                    LOGGER.debug("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Received: " + messageStr);
                     if (offset > this.slowCallTime) {
-                        LOGGER.warn("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + " Call Slowing");
+                        LOGGER.warn("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Call Slowing");
                     }
                     // 修改状态
                     serverStatus = ServerStatus.SUCCESS;
-                    resultJson.put("data", data);
+                    resultJson.put("data", resultData);
                 } else {
                     serverStatus = ServerStatus.NOT_EXIST;
                 }
             } catch (InvocationTargetException e) {
                 // 获取目标异常
                 Throwable t = e.getTargetException();
-                LOGGER.error("Method Invoke Target Exception! Message: " + messageStr);
+                LOGGER.error("Method Invoke Target Exception! Received: " + messageStr);
                 LOGGER.error(t.getMessage(), t);
             } catch (Exception e) {
-                LOGGER.error("Method Invoke Exception! Message: " + messageStr);
+                LOGGER.error("Method Invoke Exception! Received: " + messageStr);
                 LOGGER.error(e.getMessage(), e);
             }
             // 状态设置
@@ -137,7 +149,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
             // 反馈消息
             channel.basicPublish(messageProperties.getReplyToAddress().getExchangeName(), messageProperties.getReplyToAddress().getRoutingKey(), replyProps, resultJson.toJSONString().getBytes(StandardCharsets.UTF_8));
         } catch (Exception e) {
-            LOGGER.error(this.rpcType.getName() + "-RpcServer-" + this.rpcName + " Exception! Message: " + messageStr);
+            LOGGER.error(this.rpcType.getName() + "-RpcServer-" + this.rpcName + " Exception! Received: " + messageStr);
             LOGGER.error(e.getMessage(), e);
         } finally {
             // 确认处理任务
@@ -150,12 +162,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
     /**
      * 同步调用
      */
-    private void asyncExecute(JSONObject paramData) throws InvocationTargetException {
-        // 获得当前command
-        String command = paramData.getString("command");
-        if (StringUtils.isBlank(command)) {
-            throw new RuntimeException("Command 参数为空");
-        }
+    private void asyncExecute(JSONObject paramData, String command, JSONObject data) throws InvocationTargetException {
         // 获取当前服务的反射方法调用
         String key = this.rpcType.getName() + "_" + this.rpcName + "_" + command;
         // 通过缓存来优化性能
@@ -164,11 +171,6 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
             LOGGER.error(this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + " Not Found");
             return;
         }
-        // 获取data数据
-        JSONObject data = paramData.getJSONObject("data");
-        if (data == null) {
-            throw new RuntimeException("Data 参数错误");
-        }
         // 通过发射来调用方法
         fastMethod.invoke(this.rpcServerBean, new Object[]{data});
     }
@@ -176,12 +178,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
     /**
      * 异步调用
      */
-    private JSONObject syncExecute(JSONObject paramData) throws InvocationTargetException {
-        // 获得当前command
-        String command = paramData.getString("command");
-        if (StringUtils.isBlank(command)) {
-            throw new RuntimeException("Command 参数为空");
-        }
+    private JSONObject syncExecute(JSONObject paramData, String command, JSONObject data) throws InvocationTargetException {
         // 获取当前服务的反射方法调用
         String key = this.rpcType.getName() + "_" + this.rpcName + "_" + command;
         // 通过缓存来优化性能
@@ -190,13 +187,8 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
             LOGGER.error(this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + " Not Found");
             return null;
         }
-        // 获取data数据
-        JSONObject param = paramData.getJSONObject("data");
-        if (param == null) {
-            throw new RuntimeException("Data 参数错误");
-        }
         // 通过反射来调用方法
-        return JSONObject.parseObject(fastMethod.invoke(this.rpcServerBean, new Object[]{param}).toString());
+        return JSONObject.parseObject(fastMethod.invoke(this.rpcServerBean, new Object[]{data}).toString());
     }
 
 }
