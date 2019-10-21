@@ -76,10 +76,9 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                     throw new RuntimeException("只能包含唯一参数且参数类型只能为 JSONObject, Class: " + rpcServerClass.getName() + ", Method: " + fastMethod.getName());
                 }
                 FAST_METHOD_MAP.put(key, fastMethod);
-                LOGGER.debug(this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + methodName + " Created");
+                LOGGER.debug(this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + methodName + " Listening");
             }
         }
-        LOGGER.info(this.rpcType.getName() + "-RpcServer-" + this.rpcName + " Started");
     }
 
     @Override
@@ -90,10 +89,6 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
         try {
             messageProperties = message.getMessageProperties();
             messageStr = new String(message.getBody(), StandardCharsets.UTF_8);
-            // 打印
-            if (!LOGGER.isDebugEnabled()) {
-                LOGGER.info(this.rpcType.getName() + "-RpcServer-" + this.rpcName + " Receive: " + messageStr);
-            }
             // 构建返回JSON值
             JSONObject resultJson = new JSONObject();
             try {
@@ -104,9 +99,9 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                     long start = System.currentTimeMillis();
                     asyncExecute(paramData);
                     double offset = System.currentTimeMillis() - start;
-                    LOGGER.debug("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + " Receive: " + messageStr);
+                    LOGGER.debug("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Received: " + messageStr);
                     if (offset > this.slowCallTime) {
-                        LOGGER.warn("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + " Call Slowing");
+                        LOGGER.warn("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + " Slower Called, Received: " + messageStr);
                     }
                     return;
                 }
@@ -115,7 +110,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                 JSONObject data = syncExecute(paramData);
                 if (data != null) {
                     double offset = System.currentTimeMillis() - start;
-                    LOGGER.debug("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + " Receive: " + messageStr);
+                    LOGGER.debug("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Received: " + messageStr);
                     if (offset > this.slowCallTime) {
                         LOGGER.warn("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + " Call Slowing");
                     }
