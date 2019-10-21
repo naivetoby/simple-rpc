@@ -1,5 +1,7 @@
 package vip.toby.rpc.entity;
 
+import com.alibaba.fastjson.JSONObject;
+
 /**
  * RpcResult
  *
@@ -7,11 +9,12 @@ package vip.toby.rpc.entity;
  */
 public class RpcResult {
 
-    private ServerStatus serverStatus = ServerStatus.FAILURE;
+    private ServerStatus serverStatus;
     private ServerResult serverResult;
 
     public RpcResult(ServerStatus serverStatus) {
         this.serverStatus = serverStatus;
+        this.serverResult = null;
     }
 
     public RpcResult(ServerResult serverResult) {
@@ -27,7 +30,13 @@ public class RpcResult {
         return this.serverResult;
     }
 
-    public boolean isOk() {
-        return this.serverStatus == ServerStatus.SUCCESS && this.serverResult != null && this.serverResult.getOperateStatus() == OperateStatus.SUCCESS;
+    @Override
+    public String toString() {
+        JSONObject result = new JSONObject();
+        result.put("serverStatus", this.serverStatus);
+        if (this.serverStatus != null) {
+            result.put("serverResult", this.serverResult);
+        }
+        return result.toJSONString();
     }
 }

@@ -67,7 +67,9 @@ public class ServerResult {
         result.put("status", this.operateStatus.getStatus());
         result.put("message", this.message);
         result.put("result", this.result == null ? new JSONObject() : this.result);
-        result.put("errorCode", this.errorCode);
+        if (this.errorCode != 0) {
+            result.put("errorCode", this.errorCode);
+        }
         return result.toJSONString();
     }
 
