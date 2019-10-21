@@ -78,7 +78,7 @@ public class RpcClientProxyFactory implements FactoryBean, BeanFactoryAware {
      * 实例化 replyQueue
      */
     private Queue replyQueue(String rpcName, String rabbitClientId) {
-        return registerBean(RpcType.SYNC.getValue() + "_" + rpcName + "_ReplyQueue", Queue.class, rpcName + ".reply." + rabbitClientId, true, false, true);
+        return registerBean(RpcType.SYNC.getValue() + "_" + rpcName + "_ReplyQueue", Queue.class, rpcName + ".reply." + rabbitClientId, false, false, true);
     }
 
     /**
