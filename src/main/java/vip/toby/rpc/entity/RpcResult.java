@@ -33,9 +33,9 @@ public class RpcResult {
     @Override
     public String toString() {
         JSONObject result = new JSONObject();
-        result.put("serverStatus", this.serverStatus);
+        result.put("serverStatus", JSONObject.parse(this.serverStatus.toString()));
         if (this.serverStatus != null) {
-            result.put("serverResult", this.serverResult);
+            result.put("serverResult", JSONObject.parse(this.serverResult.toString()));
         }
         return result.toJSONString();
     }
