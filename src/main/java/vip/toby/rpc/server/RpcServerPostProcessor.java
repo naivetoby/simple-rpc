@@ -67,13 +67,13 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
                 case SYNC:
                     Map<String, Object> params = new HashMap<>(1);
                     params.put("x-message-ttl", rpcServer.xMessageTTL());
-                    Queue syncQueue = queue(rpcName, rpcType, false, params);
+                    Queue syncQueue = queue(rpcName, rpcType, params);
                     binding(rpcName, rpcType, syncQueue);
                     RpcServerHandler syncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean);
                     messageListenerContainer(rpcName, rpcType, syncQueue, syncServerHandler, rpcServer.threadNum());
                     break;
                 case ASYNC:
-                    Queue asyncQueue = queue(rpcName, rpcType, true, null);
+                    Queue asyncQueue = queue(rpcName, rpcType, null);
                     binding(rpcName, rpcType, asyncQueue);
                     RpcServerHandler asyncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean);
                     messageListenerContainer(rpcName, rpcType, asyncQueue, asyncServerHandler, rpcServer.threadNum());
@@ -87,8 +87,8 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
     /**
      * 实例化 Queue
      */
-    private Queue queue(String rpcName, RpcType rpcType, boolean durable, Map<String, Object> params) {
-        return registerBean(this.applicationContext, rpcType.getValue() + "_" + rpcName + "_Queue", Queue.class, rpcType == RpcType.ASYNC ? (rpcName + ".async") : rpcName, durable, false, false, params);
+    private Queue queue(String rpcName, RpcType rpcType, Map<String, Object> params) {
+        return registerBean(this.applicationContext, rpcType.getValue() + "_" + rpcName + "_Queue", Queue.class, rpcType == RpcType.ASYNC ? (rpcName + ".async") : rpcName, true, false, false, params);
     }
 
     /**
