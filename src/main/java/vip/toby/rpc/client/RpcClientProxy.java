@@ -7,11 +7,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.core.LocalVariableTableParameterNameDiscoverer;
+import vip.toby.rpc.annotation.Param;
 import vip.toby.rpc.annotation.RpcClientMethod;
 import vip.toby.rpc.entity.*;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 
 /**
  * RpcClientProxy
@@ -50,14 +52,29 @@ public class RpcClientProxy implements InvocationHandler {
         if (StringUtils.isBlank(methodName)) {
             methodName = method.getName();
         }
-        String[] parameterNames = PARAMETER_NAME_DISCOVERER.getParameterNames(method);
-        if (parameterNames == null || parameterNames.length != args.length) {
-            throw new RuntimeException("获取参数名失败, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
+
+        // 获取参数名
+        // 方式一(暂时不能获取接口的形参)
+        String[] paramNames = PARAMETER_NAME_DISCOVERER.getParameterNames(method);
+        if (paramNames == null) {
+            Parameter[] parameters = method.getParameters();
+            paramNames = new String[args.length];
+            for (int i = 0; i < parameters.length; i++) {
+                // 方式二(通过注解获取)
+                Parameter parameter = parameters[i];
+                Param param = parameter.getAnnotation(Param.class);
+                if (param != null) {
+                    paramNames[i] = param.value();
+                } else {
+                    // 方式三, 需要加上-parameters编译参数
+                    paramNames[i] = parameters[i].getName();
+                }
+            }
         }
         // 组装data
         JSONObject data = new JSONObject();
         for (int i = 0; i < args.length; i++) {
-            data.put(parameterNames[i], args[i]);
+            data.put(paramNames[i], args[i]);
         }
         // 调用参数
         JSONObject paramData = new JSONObject();
