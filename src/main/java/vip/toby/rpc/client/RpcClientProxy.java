@@ -49,8 +49,8 @@ public class RpcClientProxy implements InvocationHandler {
         if (rpcClientMethod == null) {
             return method.invoke(this, args);
         }
-        if (this.rpcType == RpcType.ASYNC && method.getGenericReturnType() != Void.class) {
-            throw new RuntimeException("异步 RpcClient 返回类型只能为 Void, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
+        if (this.rpcType == RpcType.ASYNC && method.getGenericReturnType() != void.class) {
+            throw new RuntimeException("异步 RpcClient 返回类型只能为 void, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
         }
         if (this.rpcType == RpcType.SYNC && method.getGenericReturnType() != RpcResult.class) {
             throw new RuntimeException("同步 RpcClient 返回类型只能为 RpcResult, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
