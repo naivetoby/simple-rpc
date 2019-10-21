@@ -12,5 +12,5 @@ import java.lang.annotation.*;
 @Documented
 public @interface RpcServerMethod {
 
-    String name() default "";
+    String value() default "";
 }

@@ -46,7 +46,7 @@ public class RpcClientProxy implements InvocationHandler {
         if (!(method.getGenericReturnType() instanceof RpcResult)) {
             throw new RuntimeException("返回类型只能为RpcResult, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
         }
-        String methodName = rpcClientMethod.name();
+        String methodName = rpcClientMethod.value();
         if (StringUtils.isBlank(methodName)) {
             methodName = method.getName();
         }
