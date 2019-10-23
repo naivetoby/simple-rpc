@@ -2,9 +2,66 @@
 
  非常轻量级的 RPC 调用框架，基于 RabbitMQ 消息队列，使用 Spring-Boot 开发。
 
-## 博客
+## Maven
 
-<https://www.toby.vip/>
+```xml
+<dependency>
+    <groupId>vip.toby.rpc</groupId>
+    <artifactId>simple-rpc</artifactId>
+    <version>1.0</version>
+</dependency>
+```
+
+## RpcServer Demo
+```java
+@RpcServer(value="rpc-queue-name", type = {RpcType.SYNC, RpcType.ASYNC})
+public class Server {
+
+    @RpcServerMethod
+    public ServerResult methodName1(JSONObject params) {
+        String param1 = params.getString("param1");
+        int param2 = params.getIntValue("param2");
+
+        JSONObject result = new JSONObject();
+        result.put("param1", param1);
+        result.put("param2", param2);
+        result.put("result", param1 + param2);
+
+        return ServerResult.build(OperateStatus.SUCCESS).result(result).message("ok");
+    }
+
+    @RpcServerMethod("methodName2-alias")
+    public ServerResult methodName2(JSONObject params) {
+        return ServerResult.build(OperateStatus.FAILURE).message("失败").errorCode(233);
+    }
+
+}
+```
+
+## RpcClient Demo
+```java
+@RpcClient(value = "rpc-queue-name", type = RpcType.SYNC)
+public interface SyncClient {
+
+    @RpcClientMethod
+    RpcResult methodName1(@Param("param1") String param1, @Param("param2") int param2);
+
+    @RpcClientMethod("methodName2-alias")
+    RpcResult methodName2(@Param("param1") String param1, @Param("param2") int param2);
+
+}
+
+@RpcClient(value = "rpc-queue-name", type = RpcType.ASYNC)
+public interface AsyncClient {
+
+    @RpcClientMethod
+    void methodName1(@Param("param1") String param1, @Param("param2") int param2);
+
+    @RpcClientMethod("methodName2-alias")
+    void methodName2(@Param("param1") String param1, @Param("param2") int param2);
+
+}
+```
 
 ## 许可证
 
