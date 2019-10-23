@@ -8,6 +8,7 @@
 
     <packaging>jar</packaging>
     <name>simple-rpc</name>
+    <url>https://github.com/thinktkj/simple-rpc</url>
     <description>Simple-rpc is a very lightweight RPC call framework based on RabbitMQ message queues, developed using Spring-Boot.</description>
     <properties>
         <gpg.skip>true</gpg.skip>
@@ -64,6 +65,15 @@
             <version>3.2.12</version>
         </dependency>
     </dependencies>
+
+    <licenses>
+        <license>
+            <name>Apache 2</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+            <comments>A business-friendly OSS license</comments>
+        </license>
+    </licenses>
 
     <build>
         <plugins>
