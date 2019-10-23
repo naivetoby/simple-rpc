@@ -79,6 +79,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                 LOGGER.debug(this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + methodName + ", Listening...");
             }
         }
+        LOGGER.info(this.rpcType.getName() + "-RpcServerHandler-" + this.rpcName + " 已启动");
     }
 
     @Override
@@ -111,7 +112,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                     long start = System.currentTimeMillis();
                     asyncExecute(paramData, command, data);
                     double offset = System.currentTimeMillis() - start;
-                    LOGGER.debug("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Received: " + messageStr);
+                    LOGGER.info("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Received: " + messageStr);
                     if (offset > this.slowCallTime) {
                         LOGGER.warn("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Slower Called, Received: " + messageStr);
                     }
@@ -122,7 +123,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                 JSONObject resultData = syncExecute(paramData, command, data);
                 if (resultData != null) {
                     double offset = System.currentTimeMillis() - start;
-                    LOGGER.debug("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Received: " + messageStr);
+                    LOGGER.info("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Received: " + messageStr);
                     if (offset > this.slowCallTime) {
                         LOGGER.warn("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Call Slowing");
                     }
