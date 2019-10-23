@@ -63,6 +63,17 @@ public interface AsyncClient {
 }
 ```
 
+## application.yml 配置
+```yaml
+spring:
+  rabbitmq:
+    host: 127.0.0.1
+    port: 5672
+    username: admin
+    password: admin
+    virtual-host: default_vs
+```
+
 ## 许可证
 
 [![license](https://img.shields.io/github/license/thinktkj/smrpc.svg?style=flat-square)](https://github.com/thinktkj/smrpc/blob/master/LICENSE)
