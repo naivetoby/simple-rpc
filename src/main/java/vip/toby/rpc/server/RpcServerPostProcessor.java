@@ -119,12 +119,20 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
     private DirectExchange getDirectExchange(RpcType rpcType) {
         if (rpcType == RpcType.SYNC) {
             if (this.syncDirectExchange == null) {
-                this.syncDirectExchange = registerBean(this.applicationContext, "syncDirectExchange", DirectExchange.class, "simple.rpc.sync", true, false);
+                if (this.applicationContext.containsBean("syncDirectExchange")) {
+                    this.syncDirectExchange = this.applicationContext.getBean("syncDirectExchange", DirectExchange.class);
+                } else {
+                    this.syncDirectExchange = registerBean(this.applicationContext, "syncDirectExchange", DirectExchange.class, "simple.rpc.sync", true, false);
+                }
             }
             return this.syncDirectExchange;
         }
         if (this.asyncDirectExchange == null) {
-            this.asyncDirectExchange = registerBean(this.applicationContext, "asyncDirectExchange", DirectExchange.class, "simple.rpc.async", true, false);
+            if (this.applicationContext.containsBean("asyncDirectExchange")) {
+                this.asyncDirectExchange = this.applicationContext.getBean("asyncDirectExchange", DirectExchange.class);
+            } else {
+                this.asyncDirectExchange = registerBean(this.applicationContext, "asyncDirectExchange", DirectExchange.class, "simple.rpc.async", true, false);
+            }
         }
         return this.asyncDirectExchange;
     }

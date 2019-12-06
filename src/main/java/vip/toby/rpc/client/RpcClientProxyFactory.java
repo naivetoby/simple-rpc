@@ -140,7 +140,11 @@ public class RpcClientProxyFactory implements FactoryBean, BeanFactoryAware {
      */
     private DirectExchange getSyncReplyDirectExchange() {
         if (this.syncReplyDirectExchange == null) {
-            this.syncReplyDirectExchange = registerBean("syncReplyDirectExchange", DirectExchange.class, "simple.rpc.sync.reply", true, false);
+            if (this.beanFactory.containsBean("syncReplyDirectExchange")) {
+                this.syncReplyDirectExchange = this.beanFactory.getBean("syncReplyDirectExchange", DirectExchange.class);
+            } else {
+                this.syncReplyDirectExchange = registerBean("syncReplyDirectExchange", DirectExchange.class, "simple.rpc.sync.reply", true, false);
+            }
         }
         return this.syncReplyDirectExchange;
     }
