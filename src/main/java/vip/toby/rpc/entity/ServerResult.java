@@ -14,7 +14,7 @@ public class ServerResult {
     private Object result;
     private int errorCode;
 
-    public ServerResult(OperateStatus operateStatus, String message, Object result, int errorCode) {
+    private ServerResult(OperateStatus operateStatus, String message, Object result, int errorCode) {
         this.operateStatus = operateStatus;
         this.message = message;
         this.result = result;
@@ -23,6 +23,14 @@ public class ServerResult {
 
     public static ServerResult build(OperateStatus operateStatus) {
         return new ServerResult(operateStatus, operateStatus.getMessage(), null, 0);
+    }
+
+    public static ServerResult buildSuccessResult(Object result) {
+        return new ServerResult(OperateStatus.SUCCESS, OperateStatus.SUCCESS.getMessage(), result, 0);
+    }
+
+    public static ServerResult buildFailureMessage(String message) {
+        return new ServerResult(OperateStatus.FAILURE, message, null, 0);
     }
 
     public ServerResult message(String message) {
