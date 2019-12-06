@@ -1,6 +1,5 @@
 package vip.toby.rpc.entity;
 
-import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 
 /**
@@ -12,10 +11,10 @@ public class ServerResult {
 
     private OperateStatus operateStatus;
     private String message;
-    private JSON result;
+    private Object result;
     private int errorCode;
 
-    public ServerResult(OperateStatus operateStatus, String message, JSON result, int errorCode) {
+    public ServerResult(OperateStatus operateStatus, String message, Object result, int errorCode) {
         this.operateStatus = operateStatus;
         this.message = message;
         this.result = result;
@@ -31,7 +30,7 @@ public class ServerResult {
         return this;
     }
 
-    public ServerResult result(JSON result) {
+    public ServerResult result(Object result) {
         if (result != null) {
             this.result = result;
         }
@@ -53,7 +52,7 @@ public class ServerResult {
         return message;
     }
 
-    public JSON getResult() {
+    public Object getResult() {
         return result;
     }
 
