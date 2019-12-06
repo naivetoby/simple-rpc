@@ -104,7 +104,7 @@ public class RpcClientProxy implements InvocationHandler {
             }
             // 获取操作层的状态
             JSONObject serverResultJson = JSON.parseObject(resultData.toString());
-            RpcResult rpcResult = new RpcResult(new ServerResult(OperateStatus.getOperateStatus(serverResultJson.getIntValue("status")), serverResultJson.getString("message"), (JSON) serverResultJson.get("result"), serverResultJson.getIntValue("errorCode")));
+            RpcResult rpcResult = new RpcResult(new ServerResult(OperateStatus.getOperateStatus(serverResultJson.getIntValue("status")), serverResultJson.getString("message"), serverResultJson.get("result"), serverResultJson.getIntValue("errorCode")));
             LOGGER.debug("Duration: " + (System.currentTimeMillis() - start) + "ms, " + this.rpcType.getName() + "-RpcClient-" + this.rpcName + ", Method: " + methodName + " Call Success, Param: " + paramDataJsonString + ", RpcResult: " + rpcResult.toString());
             return rpcResult;
         } catch (Exception e) {
