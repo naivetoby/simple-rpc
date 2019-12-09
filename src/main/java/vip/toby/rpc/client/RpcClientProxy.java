@@ -20,17 +20,17 @@ import java.lang.reflect.Parameter;
  *
  * @author toby
  */
-public class RpcClientProxy implements InvocationHandler {
+public class RpcClientProxy<T> implements InvocationHandler {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(RpcClientProxy.class);
 
-    private final Class<?> rpcClientInterface;
+    private final Class<T> rpcClientInterface;
     private final String rpcName;
     private final RpcType rpcType;
     private final RabbitTemplate sender;
     private final SimpleMessageListenerContainer messageListenerContainer;
 
-    RpcClientProxy(Class<?> rpcClientInterface, String rpcName, RpcType rpcType, RabbitTemplate sender, SimpleMessageListenerContainer messageListenerContainer) {
+    RpcClientProxy(Class<T> rpcClientInterface, String rpcName, RpcType rpcType, RabbitTemplate sender, SimpleMessageListenerContainer messageListenerContainer) {
         this.rpcClientInterface = rpcClientInterface;
         this.rpcName = rpcName;
         this.rpcType = rpcType;
@@ -47,9 +47,16 @@ public class RpcClientProxy implements InvocationHandler {
         // 获取方法注解
         RpcClientMethod rpcClientMethod = method.getAnnotation(RpcClientMethod.class);
         if (rpcClientMethod == null) {
-            return method.invoke(this, args);
+            try {
+                if (Object.class.equals(method.getDeclaringClass())) {
+                    return method.invoke(this, args);
+                }
+                throw new RuntimeException("未加@RpcClientMethod, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
+            } catch (Throwable t) {
+                throw new RuntimeException(t);
+            }
         }
-        if (this.rpcType == RpcType.ASYNC && method.getGenericReturnType() != void.class) {
+        if (this.rpcType == RpcType.ASYNC && method.getGenericReturnType() != Void.TYPE) {
             throw new RuntimeException("ASYNC-RpcClient 返回类型只能为 void, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
         }
         if (this.rpcType == RpcType.SYNC && method.getGenericReturnType() != RpcResult.class) {

@@ -52,12 +52,14 @@ public class ClassPathRpcClientScanner extends ClassPathBeanDefinitionScanner {
         for (BeanDefinitionHolder holder : beanDefinitions) {
             rpcClientBeanDefinition = (GenericBeanDefinition) holder.getBeanDefinition();
             String beanClassName = rpcClientBeanDefinition.getBeanClassName();
-            // 获取真实接口class，并作为构造方法的参数
-            rpcClientBeanDefinition.getConstructorArgumentValues().addGenericArgumentValue(beanClassName);
-            // 修改类为 RpcClientProxyFactory
-            rpcClientBeanDefinition.setBeanClass(RpcClientProxyFactory.class);
-            // 采用按照类型注入的方式
-            rpcClientBeanDefinition.setAutowireMode(AbstractBeanDefinition.AUTOWIRE_BY_TYPE);
+            if (beanClassName != null) {
+                // 获取真实接口class，并作为构造方法的参数
+                rpcClientBeanDefinition.getConstructorArgumentValues().addGenericArgumentValue(beanClassName);
+                // 修改类为 RpcClientProxyFactory
+                rpcClientBeanDefinition.setBeanClass(RpcClientProxyFactory.class);
+                // 采用按照类型注入的方式
+                rpcClientBeanDefinition.setAutowireMode(AbstractBeanDefinition.AUTOWIRE_BY_TYPE);
+            }
         }
     }
 

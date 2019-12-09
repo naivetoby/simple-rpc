@@ -27,14 +27,14 @@ import java.util.UUID;
  *
  * @author toby
  */
-public class RpcClientProxyFactory implements FactoryBean, BeanFactoryAware {
+public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAware {
 
     private BeanFactory beanFactory;
-    private Class<?> rpcClientInterface;
+    private Class<T> rpcClientInterface;
     private ConnectionFactory connectionFactory;
     private DirectExchange syncReplyDirectExchange;
 
-    public RpcClientProxyFactory(Class<?> rpcClientInterface) {
+    public RpcClientProxyFactory(Class<T> rpcClientInterface) {
         this.rpcClientInterface = rpcClientInterface;
     }
 
@@ -43,8 +43,9 @@ public class RpcClientProxyFactory implements FactoryBean, BeanFactoryAware {
         this.beanFactory = beanFactory;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public Object getObject() throws Exception {
+    public T getObject() {
         RabbitTemplate sender;
         SimpleMessageListenerContainer replyMessageListenerContainer = null;
         RpcClient rpcClient = this.rpcClientInterface.getAnnotation(RpcClient.class);
@@ -61,11 +62,11 @@ public class RpcClientProxyFactory implements FactoryBean, BeanFactoryAware {
         } else {
             sender = asyncSender(rpcName, getConnectionFactory());
         }
-        return Proxy.newProxyInstance(this.rpcClientInterface.getClassLoader(), new Class[]{this.rpcClientInterface}, new RpcClientProxy(this.rpcClientInterface, rpcName, rpcType, sender, replyMessageListenerContainer));
+        return (T) Proxy.newProxyInstance(this.rpcClientInterface.getClassLoader(), new Class[]{this.rpcClientInterface}, new RpcClientProxy<>(this.rpcClientInterface, rpcName, rpcType, sender, replyMessageListenerContainer));
     }
 
     @Override
-    public Class<?> getObjectType() {
+    public Class<T> getObjectType() {
         return this.rpcClientInterface;
     }
 
@@ -152,7 +153,7 @@ public class RpcClientProxyFactory implements FactoryBean, BeanFactoryAware {
     /**
      * 对象实例化并注册到Spring上下文
      */
-    private <T> T registerBean(String name, Class<T> clazz, Object... args) {
+    private <L> L registerBean(String name, Class<L> clazz, Object... args) {
         BeanDefinitionBuilder beanDefinitionBuilder = BeanDefinitionBuilder.genericBeanDefinition(clazz);
         if (args != null && args.length > 0) {
             for (Object arg : args) {
