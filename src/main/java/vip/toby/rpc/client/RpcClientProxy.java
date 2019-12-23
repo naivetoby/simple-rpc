@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
 import vip.toby.rpc.annotation.Param;
+import vip.toby.rpc.annotation.ParamData;
 import vip.toby.rpc.annotation.RpcClientMethod;
 import vip.toby.rpc.entity.*;
 
@@ -73,13 +74,23 @@ public class RpcClientProxy<T> implements InvocationHandler {
             // 需要加上-parameters编译参数, 否则参数名不对
             String paramName = parameters[i].getName();
             Parameter parameter = parameters[i];
-            Param param = parameter.getAnnotation(Param.class);
-            if (param != null && StringUtils.isNotBlank(param.value())) {
-                paramName = param.value();
+            // 如果存在@ParamData注解, 将整个JSON放入参数
+            ParamData paramData = parameter.getAnnotation(ParamData.class);
+            if (paramData != null) {
+                if (parameter.getType() == JSONObject.class) {
+                    data.putAll((JSONObject) args[i]);
+                } else {
+                    LOGGER.warn(this.rpcType.getName() + "-RpcClient-" + this.rpcName + ", Method: " + methodName + ", @ParamData的值不是JSONObject类型, 已忽略");
+                }
             } else {
-                LOGGER.warn(this.rpcType.getName() + "-RpcClient-" + this.rpcName + ", Method: " + methodName + ", 未加@Param或@Param的值为空");
+                Param param = parameter.getAnnotation(Param.class);
+                if (param != null && StringUtils.isNotBlank(param.value())) {
+                    paramName = param.value();
+                } else {
+                    LOGGER.warn(this.rpcType.getName() + "-RpcClient-" + this.rpcName + ", Method: " + methodName + ", 未加@Param或@Param的值为空");
+                }
+                data.put(paramName, args[i]);
             }
-            data.put(paramName, args[i]);
         }
         // 调用参数
         JSONObject paramData = new JSONObject();
