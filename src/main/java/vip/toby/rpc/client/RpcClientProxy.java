@@ -6,7 +6,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
 import vip.toby.rpc.annotation.Param;
 import vip.toby.rpc.annotation.ParamData;
 import vip.toby.rpc.annotation.RpcClientMethod;
@@ -29,22 +28,16 @@ public class RpcClientProxy<T> implements InvocationHandler {
     private final String rpcName;
     private final RpcType rpcType;
     private final RabbitTemplate sender;
-    private final SimpleMessageListenerContainer messageListenerContainer;
 
-    RpcClientProxy(Class<T> rpcClientInterface, String rpcName, RpcType rpcType, RabbitTemplate sender, SimpleMessageListenerContainer messageListenerContainer) {
+    RpcClientProxy(Class<T> rpcClientInterface, String rpcName, RpcType rpcType, RabbitTemplate sender) {
         this.rpcClientInterface = rpcClientInterface;
         this.rpcName = rpcName;
         this.rpcType = rpcType;
         this.sender = sender;
-        this.messageListenerContainer = messageListenerContainer;
     }
 
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-        // 未初始化完成
-        if (this.rpcType == RpcType.SYNC && !this.messageListenerContainer.isRunning()) {
-            return new RpcResult(ServerStatus.FAILURE);
-        }
         // 获取方法注解
         RpcClientMethod rpcClientMethod = method.getAnnotation(RpcClientMethod.class);
         if (rpcClientMethod == null) {

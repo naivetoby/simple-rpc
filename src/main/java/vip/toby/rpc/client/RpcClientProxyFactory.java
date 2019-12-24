@@ -47,7 +47,6 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
     @Override
     public T getObject() {
         RabbitTemplate sender;
-        SimpleMessageListenerContainer replyMessageListenerContainer = null;
         RpcClient rpcClient = this.rpcClientInterface.getAnnotation(RpcClient.class);
         String rpcName = rpcClient.value();
         RpcType rpcType = rpcClient.type();
@@ -57,12 +56,12 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
             Queue replyQueue = replyQueue(rpcName, UUID.randomUUID().toString());
             replyBinding(rpcName, replyQueue);
             RabbitTemplate syncSender = syncSender(rpcName, replyQueue, replyTimeout, maxAttempts, getConnectionFactory());
-            replyMessageListenerContainer = replyMessageListenerContainer(rpcName, replyQueue, syncSender, getConnectionFactory());
+            replyMessageListenerContainer(rpcName, replyQueue, syncSender, getConnectionFactory());
             sender = syncSender;
         } else {
             sender = asyncSender(rpcName, getConnectionFactory());
         }
-        return (T) Proxy.newProxyInstance(this.rpcClientInterface.getClassLoader(), new Class[]{this.rpcClientInterface}, new RpcClientProxy<>(this.rpcClientInterface, rpcName, rpcType, sender, replyMessageListenerContainer));
+        return (T) Proxy.newProxyInstance(this.rpcClientInterface.getClassLoader(), new Class[]{this.rpcClientInterface}, new RpcClientProxy<>(this.rpcClientInterface, rpcName, rpcType, sender));
     }
 
     @Override
