@@ -4,7 +4,7 @@
 
     <groupId>vip.toby.rpc</groupId>
     <artifactId>simple-rpc</artifactId>
-    <version>1.1.6.RELEASE</version>
+    <version>1.1.7.RELEASE</version>
 
     <packaging>jar</packaging>
     <name>simple-rpc</name>

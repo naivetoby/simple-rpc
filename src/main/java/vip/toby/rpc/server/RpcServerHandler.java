@@ -14,6 +14,7 @@ import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.listener.api.ChannelAwareMessageListener;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.annotation.AnnotationUtils;
 import vip.toby.rpc.annotation.RpcServerMethod;
 import vip.toby.rpc.entity.RpcType;
 import vip.toby.rpc.entity.ServerResult;
@@ -55,28 +56,31 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
         // 初始化所有接口
         Class<?> rpcServerClass = this.rpcServerBean.getClass();
         for (Method targetMethod : rpcServerClass.getMethods()) {
-            if (targetMethod != null && targetMethod.isAnnotationPresent(RpcServerMethod.class)) {
-                String methodName = targetMethod.getAnnotation(RpcServerMethod.class).value();
-                if (StringUtils.isBlank(methodName)) {
-                    methodName = targetMethod.getName();
+            if (targetMethod != null) {
+                RpcServerMethod rpcServerMethod = AnnotationUtils.findAnnotation(targetMethod, RpcServerMethod.class);
+                if (rpcServerMethod != null) {
+                    String methodName = rpcServerMethod.value();
+                    if (StringUtils.isBlank(methodName)) {
+                        methodName = targetMethod.getName();
+                    }
+                    String key = this.rpcType.getName() + "_" + this.rpcName + "_" + methodName;
+                    if (FAST_METHOD_MAP.containsKey(key)) {
+                        throw new RuntimeException("Class: " + rpcServerClass.getName() + ", Method: " + methodName + " 重复");
+                    }
+                    FastMethod fastMethod = FastClass.create(rpcServerClass).getMethod(targetMethod.getName(), new Class[]{JSONObject.class});
+                    if (fastMethod == null) {
+                        throw new RuntimeException("Class: " + rpcServerClass.getName() + ", Method: " + targetMethod.getName() + " Invoke Exception");
+                    }
+                    if (fastMethod.getReturnType() != ServerResult.class) {
+                        throw new RuntimeException("返回类型只能为 ServerResult, Class: " + rpcServerClass.getName() + ", Method: " + fastMethod.getName());
+                    }
+                    Class<?>[] parameterTypes = fastMethod.getParameterTypes();
+                    if (parameterTypes == null || parameterTypes.length != 1 || parameterTypes[0] != JSONObject.class) {
+                        throw new RuntimeException("只能包含唯一参数且参数类型只能为 JSONObject, Class: " + rpcServerClass.getName() + ", Method: " + fastMethod.getName());
+                    }
+                    FAST_METHOD_MAP.put(key, fastMethod);
+                    LOGGER.debug(this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + methodName + " 已启动");
                 }
-                String key = this.rpcType.getName() + "_" + this.rpcName + "_" + methodName;
-                if (FAST_METHOD_MAP.containsKey(key)) {
-                    throw new RuntimeException("Class: " + rpcServerClass.getName() + ", Method: " + methodName + " 重复");
-                }
-                FastMethod fastMethod = FastClass.create(rpcServerClass).getMethod(targetMethod.getName(), new Class[]{JSONObject.class});
-                if (fastMethod == null) {
-                    throw new RuntimeException("Class: " + rpcServerClass.getName() + ", Method: " + targetMethod.getName() + " Invoke Exception");
-                }
-                if (fastMethod.getReturnType() != ServerResult.class) {
-                    throw new RuntimeException("返回类型只能为 ServerResult, Class: " + rpcServerClass.getName() + ", Method: " + fastMethod.getName());
-                }
-                Class<?>[] parameterTypes = fastMethod.getParameterTypes();
-                if (parameterTypes == null || parameterTypes.length != 1 || parameterTypes[0] != JSONObject.class) {
-                    throw new RuntimeException("只能包含唯一参数且参数类型只能为 JSONObject, Class: " + rpcServerClass.getName() + ", Method: " + fastMethod.getName());
-                }
-                FAST_METHOD_MAP.put(key, fastMethod);
-                LOGGER.debug(this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + methodName + " 已启动");
             }
         }
         LOGGER.info(this.rpcType.getName() + "-RpcServerHandler-" + this.rpcName + " 已启动");
