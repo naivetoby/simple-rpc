@@ -74,7 +74,7 @@ public class ServerResult {
         result.put("status", this.operateStatus.getStatus());
         result.put("message", this.message);
         result.put("result", this.result == null ? new JSONObject() : this.result);
-        if (this.errorCode != 0) {
+        if (this.operateStatus == OperateStatus.FAILURE) {
             result.put("errorCode", this.errorCode);
         }
         return result.toJSONString();
