@@ -47,7 +47,7 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
     @Override
     public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
         Class<?> rpcServerClass = bean.getClass();
-        if (rpcServerClass.getAnnotations() != null && rpcServerClass.getAnnotations().length > 0) {
+        if (rpcServerClass.getAnnotations().length > 0) {
             for (Annotation annotation : rpcServerClass.getAnnotations()) {
                 if (annotation instanceof RpcServer) {
                     rpcServerStart(bean, (RpcServer) annotation);
