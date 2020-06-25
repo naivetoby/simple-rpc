@@ -60,10 +60,10 @@ public class Server {
 public interface SyncClient {
 
     @RpcClientMethod
-    RpcResult methodName1(@Param("param1") String param1, @Param("param2") int param2);
+    RpcResult methodName1(String param1, int param2);
 
-    @RpcClientMethod("methodName2-alias")
-    RpcResult methodName2(@Param("param1") String param1, @Param("param2") int param2);
+    @RpcClientMethod
+    RpcResult methodName2(String param1, int param2);
 
 }
 
@@ -71,10 +71,10 @@ public interface SyncClient {
 public interface AsyncClient {
 
     @RpcClientMethod
-    void methodName1(@Param("param1") String param1, @Param("param2") int param2);
+    void methodName1(String param1, int param2);
 
     @RpcClientMethod("methodName2-alias")
-    void methodName2(@Param("param1") String param1, @Param("param2") int param2);
+    void methodName2(String param1, int param2);
 
 }
 ```
