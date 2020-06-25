@@ -24,7 +24,7 @@
 <dependency>
     <groupId>vip.toby.rpc</groupId>
     <artifactId>simple-rpc</artifactId>
-    <version>1.2.1.RELEASE</version>
+    <version>1.2.2.RELEASE</version>
 </dependency>
 ```
 
