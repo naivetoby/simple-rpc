@@ -84,13 +84,13 @@ public class RpcClientProxy<T> implements InvocationHandler {
         String paramDataJsonString = paramData.toJSONString();
         try {
             if (this.rpcType == RpcType.ASYNC) {
-                sender.convertAndSend(paramDataJsonString);
+                this.sender.convertAndSend(paramDataJsonString);
                 LOGGER.debug(this.rpcType.getName() + "-RpcClient-" + this.rpcName + ", Method: " + methodName + " Call Success, Param: " + paramDataJsonString);
                 return null;
             }
             // 发起请求并返回结果
             long start = System.currentTimeMillis();
-            Object resultObj = sender.convertSendAndReceive(paramDataJsonString);
+            Object resultObj = this.sender.convertSendAndReceive(paramDataJsonString);
             if (resultObj == null) {
                 // 无返回任何结果，说明服务器负载过高，没有及时处理请求，导致超时
                 LOGGER.error("Duration: " + (System.currentTimeMillis() - start) + "ms, " + this.rpcType.getName() + "-RpcClient-" + this.rpcName + ", Method: " + methodName + " Service Unavailable, Param: " + paramDataJsonString);
