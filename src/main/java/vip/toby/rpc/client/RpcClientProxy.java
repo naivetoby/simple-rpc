@@ -36,7 +36,7 @@ public class RpcClientProxy<T> implements InvocationHandler {
     }
 
     @Override
-    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+    public Object invoke(Object proxy, Method method, Object[] args) {
         // 获取方法注解
         RpcClientMethod rpcClientMethod = method.getAnnotation(RpcClientMethod.class);
         if (rpcClientMethod == null) {
@@ -73,7 +73,7 @@ public class RpcClientProxy<T> implements InvocationHandler {
                     LOGGER.warn(this.rpcType.getName() + "-RpcClient-" + this.rpcName + ", Method: " + methodName + ", @ParamData的值不是JSONObject类型, 已忽略");
                 }
             } else {
-				// Spring-Boot框架默认已加上-parameters编译参数
+                // Spring-Boot框架默认已加上-parameters编译参数
                 data.put(parameters[i].getName(), args[i]);
             }
         }

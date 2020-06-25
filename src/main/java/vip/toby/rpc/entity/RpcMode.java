@@ -12,8 +12,8 @@ public enum RpcMode {
     // 服务端
     RPC_SERVER(1, "服务端");
 
-    private int mode;
-    private String name;
+    private final int mode;
+    private final String name;
 
     RpcMode(int mode, String name) {
         this.mode = mode;

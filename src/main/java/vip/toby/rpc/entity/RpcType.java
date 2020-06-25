@@ -12,8 +12,8 @@ public enum RpcType {
     // 异步
     ASYNC(1, "ASYNC");
 
-    private int type;
-    private String name;
+    private final int type;
+    private final String name;
 
     RpcType(int type, String name) {
         this.type = type;

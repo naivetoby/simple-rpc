@@ -9,7 +9,7 @@ import com.alibaba.fastjson.JSONObject;
  */
 public class ServerResult {
 
-    private OperateStatus operateStatus;
+    private final OperateStatus operateStatus;
     private String message;
     private Object result;
     private int errorCode;

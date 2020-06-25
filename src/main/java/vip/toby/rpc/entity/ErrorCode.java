@@ -16,7 +16,7 @@ public enum ErrorCode {
     // 找不到
     NOT_FOUND(404, "Not Found"),
     // Method not allowed
-    METHOD_NOT_ALLOWED(405, "Method not allowed"),
+    METHOD_NOT_ALLOWED(405, "Method Not Allowed"),
     // 服务器内部错误
     INTERNAL_SERVER_ERROR(500, "Internal Server Error"),
     // 服务不可用
@@ -24,8 +24,8 @@ public enum ErrorCode {
     // 请求超时(服务器负载过高，未能及时处理请求)
     GATEWAY_TIMEOUT(504, "Gateway Timeout");
 
-    private int code;
-    private String message;
+    private final int code;
+    private final String message;
 
     ErrorCode(int code, String message) {
         this.code = code;

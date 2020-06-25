@@ -114,7 +114,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                 // 异步执行任务
                 if (RpcType.ASYNC == this.rpcType) {
                     long start = System.currentTimeMillis();
-                    asyncExecute(paramData, command, data);
+                    asyncExecute(command, data);
                     double offset = System.currentTimeMillis() - start;
                     LOGGER.info("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Received: " + messageStr);
                     if (offset > this.slowCallTime) {
@@ -124,7 +124,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                 }
                 // 同步执行任务并返回结果
                 long start = System.currentTimeMillis();
-                JSONObject resultData = syncExecute(paramData, command, data);
+                JSONObject resultData = syncExecute(command, data);
                 if (resultData != null) {
                     double offset = System.currentTimeMillis() - start;
                     LOGGER.info("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Received: " + messageStr);
@@ -167,7 +167,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
     /**
      * 同步调用
      */
-    private void asyncExecute(JSONObject paramData, String command, JSONObject data) throws InvocationTargetException {
+    private void asyncExecute(String command, JSONObject data) throws InvocationTargetException {
         // 获取当前服务的反射方法调用
         String key = this.rpcType.getName() + "_" + this.rpcName + "_" + command;
         // 通过缓存来优化性能
@@ -183,7 +183,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
     /**
      * 异步调用
      */
-    private JSONObject syncExecute(JSONObject paramData, String command, JSONObject data) throws InvocationTargetException {
+    private JSONObject syncExecute(String command, JSONObject data) throws InvocationTargetException {
         // 获取当前服务的反射方法调用
         String key = this.rpcType.getName() + "_" + this.rpcName + "_" + command;
         // 通过缓存来优化性能

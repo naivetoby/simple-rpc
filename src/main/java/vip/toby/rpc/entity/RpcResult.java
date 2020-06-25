@@ -9,8 +9,8 @@ import com.alibaba.fastjson.JSONObject;
  */
 public class RpcResult {
 
-    private ServerStatus serverStatus;
-    private ServerResult serverResult;
+    private final ServerStatus serverStatus;
+    private final ServerResult serverResult;
 
     public RpcResult(ServerStatus serverStatus) {
         this.serverStatus = serverStatus;
@@ -34,7 +34,7 @@ public class RpcResult {
     public String toString() {
         JSONObject result = new JSONObject();
         result.put("serverStatus", JSONObject.parse(this.serverStatus.toString()));
-        if (this.serverStatus != null) {
+        if (this.serverResult != null) {
             result.put("serverResult", JSONObject.parse(this.serverResult.toString()));
         }
         return result.toJSONString();

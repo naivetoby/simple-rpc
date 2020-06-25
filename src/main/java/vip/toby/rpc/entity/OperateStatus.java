@@ -12,8 +12,8 @@ public enum OperateStatus {
     // 调用失败
     FAILURE(0, "Failure");
 
-    private int status;
-    private String message;
+    private final int status;
+    private final String message;
 
     OperateStatus(int status, String message) {
         this.status = status;

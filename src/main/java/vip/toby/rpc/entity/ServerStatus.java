@@ -18,8 +18,8 @@ public enum ServerStatus {
     // 调用超时, 服务不可用
     UNAVAILABLE(-2, "Service Unavailable");
 
-    private int status;
-    private String message;
+    private final int status;
+    private final String message;
 
     ServerStatus(int status, String message) {
         this.status = status;

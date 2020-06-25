@@ -91,11 +91,10 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
     /**
      * 实例化 ReplyMessageListenerContainer
      */
-    private SimpleMessageListenerContainer replyMessageListenerContainer(String rpcName, Queue queue, RabbitTemplate syncSender, ConnectionFactory connectionFactory) {
+    private void replyMessageListenerContainer(String rpcName, Queue queue, RabbitTemplate syncSender, ConnectionFactory connectionFactory) {
         SimpleMessageListenerContainer replyMessageListenerContainer = registerBean(RpcType.SYNC.getName() + "-ReplyMessageListenerContainer-" + rpcName, SimpleMessageListenerContainer.class, connectionFactory);
         replyMessageListenerContainer.setQueueNames(queue.getName());
         replyMessageListenerContainer.setMessageListener(syncSender);
-        return replyMessageListenerContainer;
     }
 
     /**
