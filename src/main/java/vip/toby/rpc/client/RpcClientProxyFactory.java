@@ -30,7 +30,7 @@ import java.util.UUID;
 public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAware {
 
     private BeanFactory beanFactory;
-    private Class<T> rpcClientInterface;
+    private final Class<T> rpcClientInterface;
     private ConnectionFactory connectionFactory;
     private DirectExchange syncReplyDirectExchange;
 
