@@ -10,7 +10,7 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-dependencies</artifactId>
-            <version>2.3.0.RELEASE</version>
+            <version>2.3.1.RELEASE</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -24,7 +24,7 @@
 <dependency>
     <groupId>vip.toby.rpc</groupId>
     <artifactId>simple-rpc</artifactId>
-    <version>1.2.0.RELEASE</version>
+    <version>1.2.1.RELEASE</version>
 </dependency>
 ```
 
