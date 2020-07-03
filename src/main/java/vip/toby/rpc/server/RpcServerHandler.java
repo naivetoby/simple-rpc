@@ -165,7 +165,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
     }
 
     /**
-     * 同步调用
+     * 异步调用
      */
     private void asyncExecute(String command, JSONObject data) throws InvocationTargetException {
         // 获取当前服务的反射方法调用
@@ -181,7 +181,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
     }
 
     /**
-     * 异步调用
+     * 同步调用
      */
     private JSONObject syncExecute(String command, JSONObject data) throws InvocationTargetException {
         // 获取当前服务的反射方法调用
