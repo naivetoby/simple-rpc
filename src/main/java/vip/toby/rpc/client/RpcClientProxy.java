@@ -2,17 +2,19 @@ package vip.toby.rpc.client;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.parser.ParserConfig;
+import com.alibaba.fastjson.parser.deserializer.JavaBeanDeserializer;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import vip.toby.rpc.annotation.ParamData;
 import vip.toby.rpc.annotation.RpcClientMethod;
 import vip.toby.rpc.entity.*;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.Type;
 
 /**
  * RpcClientProxy
@@ -64,14 +66,11 @@ public class RpcClientProxy<T> implements InvocationHandler {
         Parameter[] parameters = method.getParameters();
         for (int i = 0; i < parameters.length; i++) {
             Parameter parameter = parameters[i];
-            // 如果存在@ParamData注解, 将整个JSON放入参数
-            ParamData paramData = parameter.getAnnotation(ParamData.class);
-            if (paramData != null) {
-                if (parameter.getType() == JSONObject.class) {
-                    data.putAll((JSONObject) args[i]);
-                } else {
-                    LOGGER.warn(this.rpcType.getName() + "-RpcClient-" + this.rpcName + ", Method: " + methodName + ", @ParamData的值不是JSONObject类型, 已忽略");
-                }
+            if (isJavaBean(parameter.getType())) {
+                data = (JSONObject) JSON.toJSON(args[i]);
+                break;
+            } else if (parameter.getType() == JSONObject.class) {
+                data.putAll((JSONObject) args[i]);
             } else {
                 // Spring-Boot框架默认已加上-parameters编译参数
                 data.put(parameters[i].getName(), args[i]);
@@ -119,6 +118,14 @@ public class RpcClientProxy<T> implements InvocationHandler {
     @Override
     public String toString() {
         return this.rpcType.getName() + "-RpcClient-" + this.rpcName;
+    }
+
+    private static boolean isJavaBean(Type type) {
+        if (null == type) {
+            throw new NullPointerException();
+        }
+        // 根据 getDeserializer 返回值类型判断是否为 java bean 类型
+        return ParserConfig.global.getDeserializer(type) instanceof JavaBeanDeserializer;
     }
 
 }

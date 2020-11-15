@@ -12,7 +12,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>2.3.1.RELEASE</version>
+        <version>2.3.5.RELEASE</version>
     </parent>
     
     <groupId>com.demo</groupId>
@@ -27,7 +27,7 @@
         <dependency>
             <groupId>vip.toby.rpc</groupId>
             <artifactId>simple-rpc</artifactId>
-            <version>1.2.3.RELEASE</version>
+            <version>1.2.6.RELEASE</version>
         </dependency>
     </dependencies>
 </project>
@@ -35,25 +35,31 @@
 
 ## RpcServer Demo
 ```java
-@RpcServer(value="rpc-queue-name", type = {RpcType.SYNC, RpcType.ASYNC})
+@RpcServer(value="rpc-queue-name", type = {RpcType.SYNC, RpcType.ASYNC}, xMessageTTL = 1000, threadNum = 1)
 public class Server {
-
+    
     @RpcServerMethod
-    public ServerResult methodName1(JSONObject params) {
-        String param1 = params.getString("param1");
-        int param2 = params.getIntValue("param2");
-
+    public ServerResult methodName1(@Validated JavaBean param) {
         JSONObject result = new JSONObject();
         result.put("param1", param1);
         result.put("param2", param2);
         result.put("result", param1 + param2);
-
-        return ServerResult.build(OperateStatus.SUCCESS).result(result).message("ok");
+        return ServerResult.buildSuccessResult(result);
     }
 
-    @RpcServerMethod("methodName2-alias")
-    public ServerResult methodName2(JSONObject params) {
-        return ServerResult.build(OperateStatus.FAILURE).message("失败").errorCode(233);
+    @RpcServerMethod("methodName2Alias")
+    public ServerResult methodName2(@Validated({Group2.class}) JavaBean param) {
+        return ServerResult.build(OperateStatus.FAILURE).errorCode(737);
+    }
+
+    @RpcServerMethod
+    public ServerResult methodName3Alias(@Valid JavaBean param) {
+        return ServerResult.build(OperateStatus.SUCCESS).message("操作成功");
+    }
+
+    @RpcServerMethod
+    public ServerResult methodName4(JSONObject params) {
+        return ServerResult.buildFailureMessage("失败").errorCode(233);
     }
 
 }
@@ -68,7 +74,13 @@ public interface SyncClient {
     RpcResult methodName1(String param1, int param2);
 
     @RpcClientMethod
-    RpcResult methodName2(String param1, int param2);
+    RpcResult methodName2Alias(JavaBean param);
+    
+    @RpcClientMethod("methodName3Alias")
+    RpcResult methodName3(String param1, int param2);
+
+    @RpcClientMethod
+    RpcResult methodName4(JavaBean param);
 
 }
 
@@ -76,10 +88,10 @@ public interface SyncClient {
 public interface AsyncClient {
 
     @RpcClientMethod
-    void methodName1(String param1, int param2);
+    void methodName1(JavaBean param);
 
-    @RpcClientMethod("methodName2-alias")
-    void methodName2(String param1, int param2);
+    @RpcClientMethod("methodName2Alias")
+    void methodName2(JavaBean param);
 
 }
 ```
