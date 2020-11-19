@@ -8,6 +8,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import vip.toby.rpc.annotation.RpcClientMethod;
 import vip.toby.rpc.entity.*;
 
@@ -24,6 +25,9 @@ import java.lang.reflect.Type;
 public class RpcClientProxy<T> implements InvocationHandler {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(RpcClientProxy.class);
+
+    @Value("${spring.rabbitmq.simple-rpc.client-slow-call-time:1000}")
+    private int clientSlowCallTime;
 
     private final Class<T> rpcClientInterface;
     private final String rpcName;
@@ -107,7 +111,11 @@ public class RpcClientProxy<T> implements InvocationHandler {
             // 获取操作层的状态
             JSONObject serverResultJson = JSON.parseObject(resultData.toString());
             RpcResult rpcResult = new RpcResult(ServerResult.build(OperateStatus.getOperateStatus(serverResultJson.getIntValue("status"))).message(serverResultJson.getString("message")).result(serverResultJson.get("result")).errorCode(serverResultJson.getIntValue("errorCode")));
-            LOGGER.debug("Duration: " + (System.currentTimeMillis() - start) + "ms, " + this.rpcType.getName() + "-RpcClient-" + this.rpcName + ", Method: " + methodName + " Call Success, Param: " + paramDataJsonString + ", RpcResult: " + rpcResult.toString());
+            long offset = System.currentTimeMillis() - start;
+            LOGGER.debug("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcClient-" + this.rpcName + ", Method: " + methodName + " Call Success, Param: " + paramDataJsonString + ", RpcResult: " + rpcResult.toString());
+            if (offset > this.clientSlowCallTime) {
+                LOGGER.warn("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcClient-" + this.rpcName + ", Method: " + methodName + " Call Success, Param: " + paramDataJsonString + ", RpcResult: " + rpcResult.toString());
+            }
             return rpcResult;
         } catch (Exception e) {
             LOGGER.error(e.getMessage(), e);

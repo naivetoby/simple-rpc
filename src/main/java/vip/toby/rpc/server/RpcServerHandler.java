@@ -49,19 +49,21 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
 
     private final static Map<String, FastMethod> FAST_METHOD_MAP = new ConcurrentHashMap<>();
 
-    @Value("${spring.rabbitmq.slow-call-time:1000}")
-    private int slowCallTime;
+    @Value("${spring.rabbitmq.simple-rpc.server-slow-call-time:1000}")
+    private int serverSlowCallTime;
 
     private final Object rpcServerBean;
     private final String rpcName;
     private final RpcType rpcType;
     private final Validator validator;
+    private final RpcServerHandlerInterceptorAdapter rpcServerHandlerInterceptorAdapter;
 
-    RpcServerHandler(Object rpcServerBean, String rpcName, RpcType rpcType, Validator validator) {
+    RpcServerHandler(Object rpcServerBean, String rpcName, RpcType rpcType, Validator validator, RpcServerHandlerInterceptorAdapter rpcServerHandlerInterceptorAdapter) {
         this.rpcServerBean = rpcServerBean;
         this.rpcName = rpcName;
         this.rpcType = rpcType;
         this.validator = validator;
+        this.rpcServerHandlerInterceptorAdapter = rpcServerHandlerInterceptorAdapter;
     }
 
     @Override
@@ -137,21 +139,21 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                 // 异步执行任务
                 if (RpcType.ASYNC == this.rpcType) {
                     long start = System.currentTimeMillis();
-                    asyncExecute(command, data);
+                    asyncExecute(command, data, messageProperties.getCorrelationId());
                     double offset = System.currentTimeMillis() - start;
                     LOGGER.info("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Received: " + messageStr);
-                    if (offset > this.slowCallTime) {
+                    if (offset > this.serverSlowCallTime) {
                         LOGGER.warn("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Slower Called, Received: " + messageStr);
                     }
                     return;
                 }
                 // 同步执行任务并返回结果
                 long start = System.currentTimeMillis();
-                JSONObject resultData = syncExecute(command, data);
+                JSONObject resultData = syncExecute(command, data, messageProperties.getCorrelationId());
                 if (resultData != null) {
-                    double offset = System.currentTimeMillis() - start;
+                    long offset = System.currentTimeMillis() - start;
                     LOGGER.info("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Received: " + messageStr);
-                    if (offset > this.slowCallTime) {
+                    if (offset > this.serverSlowCallTime) {
                         LOGGER.warn("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Call Slowing");
                     }
                     // 修改状态
@@ -190,7 +192,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
     /**
      * 异步调用
      */
-    private void asyncExecute(String command, Object data) throws InvocationTargetException {
+    private void asyncExecute(String command, Object data, String correlationId) throws InvocationTargetException {
         // 获取当前服务的反射方法调用
         String key = this.rpcType.getName() + "_" + this.rpcName + "_" + command;
         // 通过缓存来优化性能
@@ -229,6 +231,10 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                 }
             }
         }
+        if (this.rpcServerHandlerInterceptorAdapter.duplicateHandle(this.rpcType.getName(), this.rpcName, fastMethod.getJavaMethod(), data, correlationId)) {
+            LOGGER.warn(this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Call Duplicate");
+            return;
+        }
         // 通过发射来调用方法
         fastMethod.invoke(this.rpcServerBean, new Object[]{data});
     }
@@ -236,7 +242,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
     /**
      * 同步调用
      */
-    private JSONObject syncExecute(String command, Object data) throws InvocationTargetException {
+    private JSONObject syncExecute(String command, Object data, String correlationId) throws InvocationTargetException {
         // 获取当前服务的反射方法调用
         String key = this.rpcType.getName() + "_" + this.rpcName + "_" + command;
         // 通过缓存来优化性能
@@ -275,6 +281,11 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                     break;
                 }
             }
+        }
+        if (this.rpcServerHandlerInterceptorAdapter.duplicateHandle(this.rpcType.getName(), this.rpcName, fastMethod.getJavaMethod(), data, correlationId)) {
+            LOGGER.warn(this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Call Duplicate");
+            ServerResult resultData = ServerResult.buildFailureMessage("Call Duplicate").errorCode(-1);
+            return JSONObject.parseObject(resultData.toString());
         }
         // 通过发射来调用方法
         return JSONObject.parseObject(fastMethod.invoke(this.rpcServerBean, new Object[]{data}).toString());
