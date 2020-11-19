@@ -112,9 +112,10 @@ public class RpcClientProxy<T> implements InvocationHandler {
             JSONObject serverResultJson = JSON.parseObject(resultData.toString());
             RpcResult rpcResult = new RpcResult(ServerResult.build(OperateStatus.getOperateStatus(serverResultJson.getIntValue("status"))).message(serverResultJson.getString("message")).result(serverResultJson.get("result")).errorCode(serverResultJson.getIntValue("errorCode")));
             long offset = System.currentTimeMillis() - start;
-            LOGGER.debug("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcClient-" + this.rpcName + ", Method: " + methodName + " Call Success, Param: " + paramDataJsonString + ", RpcResult: " + rpcResult.toString());
             if (offset > this.clientSlowCallTime) {
                 LOGGER.warn("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcClient-" + this.rpcName + ", Method: " + methodName + " Call Success, Param: " + paramDataJsonString + ", RpcResult: " + rpcResult.toString());
+            } else {
+                LOGGER.debug("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcClient-" + this.rpcName + ", Method: " + methodName + " Call Success, Param: " + paramDataJsonString + ", RpcResult: " + rpcResult.toString());
             }
             return rpcResult;
         } catch (Exception e) {

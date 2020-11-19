@@ -43,7 +43,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * @author toby
  */
-public class RpcServerHandler implements ChannelAwareMessageListener, InitializingBean {
+public class RpcServerHandler implements RpcServerHandlerInterceptorAdapter, ChannelAwareMessageListener, InitializingBean {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(RpcServerHandler.class);
 
@@ -56,14 +56,12 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
     private final String rpcName;
     private final RpcType rpcType;
     private final Validator validator;
-    private final RpcServerHandlerInterceptorAdapter rpcServerHandlerInterceptorAdapter;
 
-    RpcServerHandler(Object rpcServerBean, String rpcName, RpcType rpcType, Validator validator, RpcServerHandlerInterceptorAdapter rpcServerHandlerInterceptorAdapter) {
+    RpcServerHandler(Object rpcServerBean, String rpcName, RpcType rpcType, Validator validator) {
         this.rpcServerBean = rpcServerBean;
         this.rpcName = rpcName;
         this.rpcType = rpcType;
         this.validator = validator;
-        this.rpcServerHandlerInterceptorAdapter = rpcServerHandlerInterceptorAdapter;
     }
 
     @Override
@@ -141,9 +139,10 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                     long start = System.currentTimeMillis();
                     asyncExecute(command, data, messageProperties.getCorrelationId());
                     double offset = System.currentTimeMillis() - start;
-                    LOGGER.info("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Received: " + messageStr);
                     if (offset > this.serverSlowCallTime) {
                         LOGGER.warn("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Slower Called, Received: " + messageStr);
+                    } else {
+                        LOGGER.info("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Received: " + messageStr);
                     }
                     return;
                 }
@@ -152,9 +151,10 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                 JSONObject resultData = syncExecute(command, data, messageProperties.getCorrelationId());
                 if (resultData != null) {
                     long offset = System.currentTimeMillis() - start;
-                    LOGGER.info("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Received: " + messageStr);
                     if (offset > this.serverSlowCallTime) {
                         LOGGER.warn("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Call Slowing");
+                    } else {
+                        LOGGER.info("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Received: " + messageStr);
                     }
                     // 修改状态
                     serverStatus = ServerStatus.SUCCESS;
@@ -231,7 +231,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                 }
             }
         }
-        if (this.rpcServerHandlerInterceptorAdapter.duplicateHandle(this.rpcType.getName(), this.rpcName, fastMethod.getJavaMethod(), data, correlationId)) {
+        if (this.duplicateHandle(this.rpcType.getName(), this.rpcName, fastMethod.getJavaMethod(), data, correlationId)) {
             LOGGER.warn(this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Call Duplicate");
             return;
         }
@@ -282,7 +282,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                 }
             }
         }
-        if (this.rpcServerHandlerInterceptorAdapter.duplicateHandle(this.rpcType.getName(), this.rpcName, fastMethod.getJavaMethod(), data, correlationId)) {
+        if (this.duplicateHandle(this.rpcType.getName(), this.rpcName, fastMethod.getJavaMethod(), data, correlationId)) {
             LOGGER.warn(this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Call Duplicate");
             ServerResult resultData = ServerResult.buildFailureMessage("Call Duplicate").errorCode(-1);
             return JSONObject.parseObject(resultData.toString());

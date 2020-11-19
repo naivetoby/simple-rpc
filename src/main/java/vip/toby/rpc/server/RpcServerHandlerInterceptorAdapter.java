@@ -1,7 +1,5 @@
 package vip.toby.rpc.server;
 
-import org.springframework.stereotype.Component;
-
 import java.lang.reflect.Method;
 
 /**
@@ -9,10 +7,9 @@ import java.lang.reflect.Method;
  *
  * @author toby
  */
-@Component
-public class RpcServerHandlerInterceptorAdapter {
+public interface RpcServerHandlerInterceptorAdapter {
 
-    public boolean duplicateHandle(String rpcType, String rpcName, Method method, Object data, String correlationId) {
+    default boolean duplicateHandle(String rpcType, String rpcName, Method method, Object data, String correlationId) {
         return false;
     }
 
