@@ -17,6 +17,7 @@ import org.springframework.retry.policy.SimpleRetryPolicy;
 import org.springframework.retry.support.RetryTemplate;
 import vip.toby.rpc.annotation.RpcClient;
 import vip.toby.rpc.entity.RpcType;
+import vip.toby.rpc.properties.RpcProperties;
 
 import java.lang.reflect.Proxy;
 import java.util.Collections;
@@ -33,6 +34,7 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
     private final Class<T> rpcClientInterface;
     private ConnectionFactory connectionFactory;
     private DirectExchange syncReplyDirectExchange;
+    private RpcProperties rpcProperties;
 
     public RpcClientProxyFactory(Class<T> rpcClientInterface) {
         this.rpcClientInterface = rpcClientInterface;
@@ -61,7 +63,7 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
         } else {
             sender = asyncSender(rpcName, getConnectionFactory());
         }
-        return (T) Proxy.newProxyInstance(this.rpcClientInterface.getClassLoader(), new Class[]{this.rpcClientInterface}, new RpcClientProxy<>(this.rpcClientInterface, rpcName, rpcType, sender));
+        return (T) Proxy.newProxyInstance(this.rpcClientInterface.getClassLoader(), new Class[]{this.rpcClientInterface}, new RpcClientProxy<>(this.rpcClientInterface, rpcName, rpcType, sender, getRpcProperties()));
     }
 
     @Override
@@ -132,6 +134,20 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
             this.connectionFactory = this.beanFactory.getBean(ConnectionFactory.class);
         }
         return this.connectionFactory;
+    }
+
+    /**
+     * 实例化 RpcProperties
+     */
+    private RpcProperties getRpcProperties() {
+        if (this.rpcProperties == null) {
+            if (this.beanFactory.containsBean("rpcProperties")) {
+                this.rpcProperties = this.beanFactory.getBean("rpcProperties", RpcProperties.class);
+            } else {
+                this.rpcProperties = registerBean("rpcProperties", RpcProperties.class);
+            }
+        }
+        return this.rpcProperties;
     }
 
     /**

@@ -18,6 +18,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.validation.Validator;
 import vip.toby.rpc.annotation.RpcServer;
 import vip.toby.rpc.entity.RpcType;
+import vip.toby.rpc.properties.RpcProperties;
 
 import java.lang.annotation.Annotation;
 import java.util.Collections;
@@ -41,6 +42,7 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
     private ConnectionFactory connectionFactory;
     private DirectExchange syncDirectExchange;
     private DirectExchange asyncDirectExchange;
+    private RpcProperties rpcProperties;
 
     @Override
     public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
@@ -72,13 +74,13 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
                     params.put("x-message-ttl", rpcServer.xMessageTTL());
                     Queue syncQueue = queue(rpcName, rpcType, params);
                     binding(rpcName, rpcType, syncQueue);
-                    RpcServerHandler syncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, validator);
+                    RpcServerHandler syncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, validator, getRpcProperties());
                     messageListenerContainer(rpcName, rpcType, syncQueue, syncServerHandler, rpcServer.threadNum());
                     break;
                 case ASYNC:
                     Queue asyncQueue = queue(rpcName, rpcType, null);
                     binding(rpcName, rpcType, asyncQueue);
-                    RpcServerHandler asyncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, validator);
+                    RpcServerHandler asyncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, validator, getRpcProperties());
                     messageListenerContainer(rpcName, rpcType, asyncQueue, asyncServerHandler, rpcServer.threadNum());
                     break;
                 default:
@@ -104,8 +106,8 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
     /**
      * 实例化 RpcServerHandler
      */
-    private RpcServerHandler rpcServerHandler(String rpcName, RpcType rpcType, Object rpcServerBean, Validator validator) {
-        return registerBean(this.applicationContext, rpcType.getName() + "-RpcServerHandler-" + rpcName, RpcServerHandler.class, rpcServerBean, rpcName, rpcType, validator);
+    private RpcServerHandler rpcServerHandler(String rpcName, RpcType rpcType, Object rpcServerBean, Validator validator, RpcProperties rpcProperties) {
+        return registerBean(this.applicationContext, rpcType.getName() + "-RpcServerHandler-" + rpcName, RpcServerHandler.class, rpcServerBean, rpcName, rpcType, validator, rpcProperties);
     }
 
     /**
@@ -119,6 +121,23 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
         messageListenerContainer.setConcurrentConsumers(threadNum);
     }
 
+    /**
+     * 实例化 RpcProperties
+     */
+    private RpcProperties getRpcProperties() {
+        if (this.rpcProperties == null) {
+            if (this.applicationContext.containsBean("rpcProperties")) {
+                this.rpcProperties = this.applicationContext.getBean("rpcProperties", RpcProperties.class);
+            } else {
+                this.rpcProperties = registerBean(this.applicationContext, "rpcProperties", RpcProperties.class);
+            }
+        }
+        return this.rpcProperties;
+    }
+
+    /**
+     * 实例化 DirectExchange
+     */
     private DirectExchange getDirectExchange(RpcType rpcType) {
         if (rpcType == RpcType.SYNC) {
             if (this.syncDirectExchange == null) {
@@ -140,6 +159,9 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
         return this.asyncDirectExchange;
     }
 
+    /**
+     * 对象实例化并注册到Spring上下文
+     */
     private <T> T registerBean(ConfigurableApplicationContext applicationContext, String name, Class<T> clazz, Object... args) {
         BeanDefinitionBuilder beanDefinitionBuilder = BeanDefinitionBuilder.genericBeanDefinition(clazz);
         if (args.length > 0) {

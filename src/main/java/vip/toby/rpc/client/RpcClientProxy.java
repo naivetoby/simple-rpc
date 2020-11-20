@@ -8,9 +8,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.beans.factory.annotation.Value;
 import vip.toby.rpc.annotation.RpcClientMethod;
 import vip.toby.rpc.entity.*;
+import vip.toby.rpc.properties.RpcProperties;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -26,19 +26,18 @@ public class RpcClientProxy<T> implements InvocationHandler {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(RpcClientProxy.class);
 
-    @Value("${spring.rabbitmq.simple-rpc.client-slow-call-time:1000}")
-    private int clientSlowCallTime;
-
     private final Class<T> rpcClientInterface;
     private final String rpcName;
     private final RpcType rpcType;
     private final RabbitTemplate sender;
+    private final RpcProperties rpcProperties;
 
-    RpcClientProxy(Class<T> rpcClientInterface, String rpcName, RpcType rpcType, RabbitTemplate sender) {
+    RpcClientProxy(Class<T> rpcClientInterface, String rpcName, RpcType rpcType, RabbitTemplate sender, RpcProperties rpcProperties) {
         this.rpcClientInterface = rpcClientInterface;
         this.rpcName = rpcName;
         this.rpcType = rpcType;
         this.sender = sender;
+        this.rpcProperties = rpcProperties;
     }
 
     @Override
@@ -112,7 +111,7 @@ public class RpcClientProxy<T> implements InvocationHandler {
             JSONObject serverResultJson = JSON.parseObject(resultData.toString());
             RpcResult rpcResult = new RpcResult(ServerResult.build(OperateStatus.getOperateStatus(serverResultJson.getIntValue("status"))).message(serverResultJson.getString("message")).result(serverResultJson.get("result")).errorCode(serverResultJson.getIntValue("errorCode")));
             long offset = System.currentTimeMillis() - start;
-            if (offset > this.clientSlowCallTime) {
+            if (offset > this.rpcProperties.getClientSlowCallTime()) {
                 LOGGER.warn("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcClient-" + this.rpcName + ", Method: " + methodName + " Call Success, Param: " + paramDataJsonString + ", RpcResult: " + rpcResult.toString());
             } else {
                 LOGGER.debug("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcClient-" + this.rpcName + ", Method: " + methodName + " Call Success, Param: " + paramDataJsonString + ", RpcResult: " + rpcResult.toString());

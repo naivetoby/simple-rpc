@@ -15,13 +15,13 @@ import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.listener.api.ChannelAwareMessageListener;
 import org.springframework.beans.factory.InitializingBean;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.validation.annotation.Validated;
 import vip.toby.rpc.annotation.RpcServerMethod;
 import vip.toby.rpc.entity.RpcType;
 import vip.toby.rpc.entity.ServerResult;
 import vip.toby.rpc.entity.ServerStatus;
+import vip.toby.rpc.properties.RpcProperties;
 
 import javax.validation.ConstraintViolation;
 import javax.validation.Validator;
@@ -49,19 +49,18 @@ public class RpcServerHandler implements RpcServerHandlerInterceptorAdapter, Cha
 
     private final static Map<String, FastMethod> FAST_METHOD_MAP = new ConcurrentHashMap<>();
 
-    @Value("${spring.rabbitmq.simple-rpc.server-slow-call-time:1000}")
-    private int serverSlowCallTime;
-
     private final Object rpcServerBean;
     private final String rpcName;
     private final RpcType rpcType;
     private final Validator validator;
+    private final RpcProperties rpcProperties;
 
-    RpcServerHandler(Object rpcServerBean, String rpcName, RpcType rpcType, Validator validator) {
+    RpcServerHandler(Object rpcServerBean, String rpcName, RpcType rpcType, Validator validator, RpcProperties rpcProperties) {
         this.rpcServerBean = rpcServerBean;
         this.rpcName = rpcName;
         this.rpcType = rpcType;
         this.validator = validator;
+        this.rpcProperties = rpcProperties;
     }
 
     @Override
@@ -139,7 +138,7 @@ public class RpcServerHandler implements RpcServerHandlerInterceptorAdapter, Cha
                     long start = System.currentTimeMillis();
                     asyncExecute(command, data, messageProperties.getCorrelationId());
                     double offset = System.currentTimeMillis() - start;
-                    if (offset > this.serverSlowCallTime) {
+                    if (offset > this.rpcProperties.getServerSlowCallTime()) {
                         LOGGER.warn("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Slower Called, Received: " + messageStr);
                     } else {
                         LOGGER.info("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Received: " + messageStr);
@@ -151,7 +150,7 @@ public class RpcServerHandler implements RpcServerHandlerInterceptorAdapter, Cha
                 JSONObject resultData = syncExecute(command, data, messageProperties.getCorrelationId());
                 if (resultData != null) {
                     long offset = System.currentTimeMillis() - start;
-                    if (offset > this.serverSlowCallTime) {
+                    if (offset > this.rpcProperties.getServerSlowCallTime()) {
                         LOGGER.warn("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Call Slowing");
                     } else {
                         LOGGER.info("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Received: " + messageStr);
