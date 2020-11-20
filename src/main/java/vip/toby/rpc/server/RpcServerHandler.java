@@ -43,7 +43,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * @author toby
  */
-public class RpcServerHandler implements RpcServerHandlerInterceptorAdapter, ChannelAwareMessageListener, InitializingBean {
+public class RpcServerHandler implements ChannelAwareMessageListener, InitializingBean {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(RpcServerHandler.class);
 
@@ -54,13 +54,15 @@ public class RpcServerHandler implements RpcServerHandlerInterceptorAdapter, Cha
     private final RpcType rpcType;
     private final Validator validator;
     private final RpcProperties rpcProperties;
+    private final RpcServerDuplicateHandler rpcServerDuplicateHandler;
 
-    RpcServerHandler(Object rpcServerBean, String rpcName, RpcType rpcType, Validator validator, RpcProperties rpcProperties) {
+    RpcServerHandler(Object rpcServerBean, String rpcName, RpcType rpcType, Validator validator, RpcProperties rpcProperties, RpcServerDuplicateHandler rpcServerDuplicateHandler) {
         this.rpcServerBean = rpcServerBean;
         this.rpcName = rpcName;
         this.rpcType = rpcType;
         this.validator = validator;
         this.rpcProperties = rpcProperties;
+        this.rpcServerDuplicateHandler = rpcServerDuplicateHandler;
     }
 
     @Override
@@ -230,7 +232,7 @@ public class RpcServerHandler implements RpcServerHandlerInterceptorAdapter, Cha
                 }
             }
         }
-        if (this.duplicateHandle(this.rpcType.getName(), this.rpcName, fastMethod.getJavaMethod(), data, correlationId)) {
+        if (this.rpcServerDuplicateHandler != null && this.rpcServerDuplicateHandler.duplicateHandle(this.rpcType.getName(), this.rpcName, fastMethod.getJavaMethod(), data, correlationId)) {
             LOGGER.warn("Call Duplicate! " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command);
             return;
         }
@@ -281,7 +283,7 @@ public class RpcServerHandler implements RpcServerHandlerInterceptorAdapter, Cha
                 }
             }
         }
-        if (this.duplicateHandle(this.rpcType.getName(), this.rpcName, fastMethod.getJavaMethod(), data, correlationId)) {
+        if (this.rpcServerDuplicateHandler != null && this.rpcServerDuplicateHandler.duplicateHandle(this.rpcType.getName(), this.rpcName, fastMethod.getJavaMethod(), data, correlationId)) {
             LOGGER.warn("Call Duplicate! " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command);
             ServerResult resultData = ServerResult.buildFailureMessage("Call Duplicate").errorCode(-1);
             return JSONObject.parseObject(resultData.toString());

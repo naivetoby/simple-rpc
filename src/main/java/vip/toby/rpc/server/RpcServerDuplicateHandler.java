@@ -3,11 +3,11 @@ package vip.toby.rpc.server;
 import java.lang.reflect.Method;
 
 /**
- * RpcServerHandlerInterceptorAdapter
+ * RpcServerDuplicateHandler
  *
  * @author toby
  */
-public interface RpcServerHandlerInterceptorAdapter {
+public interface RpcServerDuplicateHandler {
 
     default boolean duplicateHandle(String rpcType, String rpcName, Method method, Object data, String correlationId) {
         return false;

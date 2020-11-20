@@ -43,6 +43,9 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
     private DirectExchange syncDirectExchange;
     private DirectExchange asyncDirectExchange;
     private RpcProperties rpcProperties;
+    @Autowired
+    @Lazy
+    private RpcServerDuplicateHandler rpcServerDuplicateHandler;
 
     @Override
     public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
@@ -74,13 +77,13 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
                     params.put("x-message-ttl", rpcServer.xMessageTTL());
                     Queue syncQueue = queue(rpcName, rpcType, params);
                     binding(rpcName, rpcType, syncQueue);
-                    RpcServerHandler syncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, validator, getRpcProperties());
+                    RpcServerHandler syncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, validator, getRpcProperties(), rpcServerDuplicateHandler);
                     messageListenerContainer(rpcName, rpcType, syncQueue, syncServerHandler, rpcServer.threadNum());
                     break;
                 case ASYNC:
                     Queue asyncQueue = queue(rpcName, rpcType, null);
                     binding(rpcName, rpcType, asyncQueue);
-                    RpcServerHandler asyncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, validator, getRpcProperties());
+                    RpcServerHandler asyncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, validator, getRpcProperties(), rpcServerDuplicateHandler);
                     messageListenerContainer(rpcName, rpcType, asyncQueue, asyncServerHandler, rpcServer.threadNum());
                     break;
                 default:
@@ -106,8 +109,8 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
     /**
      * 实例化 RpcServerHandler
      */
-    private RpcServerHandler rpcServerHandler(String rpcName, RpcType rpcType, Object rpcServerBean, Validator validator, RpcProperties rpcProperties) {
-        return registerBean(this.applicationContext, rpcType.getName() + "-RpcServerHandler-" + rpcName, RpcServerHandler.class, rpcServerBean, rpcName, rpcType, validator, rpcProperties);
+    private RpcServerHandler rpcServerHandler(String rpcName, RpcType rpcType, Object rpcServerBean, Validator validator, RpcProperties rpcProperties, RpcServerDuplicateHandler rpcServerDuplicateHandler) {
+        return registerBean(this.applicationContext, rpcType.getName() + "-RpcServerHandler-" + rpcName, RpcServerHandler.class, rpcServerBean, rpcName, rpcType, validator, rpcProperties, rpcServerDuplicateHandler);
     }
 
     /**
