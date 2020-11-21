@@ -1,5 +1,6 @@
 package vip.toby.rpc.properties;
 
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
@@ -10,6 +11,8 @@ public class RpcProperties {
     private Integer clientSlowCallTime;
 
     private Integer serverSlowCallTime;
+
+    private String validatorFailFast;
 
     public int getClientSlowCallTime() {
         if (this.clientSlowCallTime == null) {
@@ -25,6 +28,13 @@ public class RpcProperties {
         return this.serverSlowCallTime;
     }
 
+    public String getValidatorFailFast() {
+        if (StringUtils.isBlank(this.validatorFailFast)) {
+            return "true";
+        }
+        return validatorFailFast;
+    }
+
     public void setClientSlowCallTime(Integer clientSlowCallTime) {
         this.clientSlowCallTime = clientSlowCallTime;
     }
@@ -32,4 +42,9 @@ public class RpcProperties {
     public void setServerSlowCallTime(Integer serverSlowCallTime) {
         this.serverSlowCallTime = serverSlowCallTime;
     }
+
+    public void setValidatorFailFast(String validatorFailFast) {
+        this.validatorFailFast = validatorFailFast;
+    }
+
 }

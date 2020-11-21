@@ -1,5 +1,6 @@
 package vip.toby.rpc.server;
 
+import org.hibernate.validator.HibernateValidator;
 import org.springframework.amqp.core.AcknowledgeMode;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.DirectExchange;
@@ -15,11 +16,13 @@ import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
-import org.springframework.validation.Validator;
 import vip.toby.rpc.annotation.RpcServer;
 import vip.toby.rpc.entity.RpcType;
 import vip.toby.rpc.properties.RpcProperties;
 
+import javax.validation.Validation;
+import javax.validation.Validator;
+import javax.validation.ValidatorFactory;
 import java.lang.annotation.Annotation;
 import java.util.Collections;
 import java.util.HashMap;
@@ -35,17 +38,18 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
 
     @Autowired
     private ConfigurableApplicationContext applicationContext;
-    @Autowired
-    private Validator validator;
+
     @Autowired
     @Lazy
     private ConnectionFactory connectionFactory;
+
+    @Autowired(required = false)
+    private RpcServerBaseHandlerInterceptor rpcServerBaseHandlerInterceptor;
+
     private DirectExchange syncDirectExchange;
     private DirectExchange asyncDirectExchange;
+    private Validator validator;
     private RpcProperties rpcProperties;
-    @Autowired
-    @Lazy
-    private RpcServerDuplicateHandler rpcServerDuplicateHandler;
 
     @Override
     public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
@@ -77,13 +81,13 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
                     params.put("x-message-ttl", rpcServer.xMessageTTL());
                     Queue syncQueue = queue(rpcName, rpcType, params);
                     binding(rpcName, rpcType, syncQueue);
-                    RpcServerHandler syncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, validator, getRpcProperties(), rpcServerDuplicateHandler);
+                    RpcServerHandler syncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, getValidator(), getRpcProperties(), rpcServerBaseHandlerInterceptor);
                     messageListenerContainer(rpcName, rpcType, syncQueue, syncServerHandler, rpcServer.threadNum());
                     break;
                 case ASYNC:
                     Queue asyncQueue = queue(rpcName, rpcType, null);
                     binding(rpcName, rpcType, asyncQueue);
-                    RpcServerHandler asyncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, validator, getRpcProperties(), rpcServerDuplicateHandler);
+                    RpcServerHandler asyncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, getValidator(), getRpcProperties(), rpcServerBaseHandlerInterceptor);
                     messageListenerContainer(rpcName, rpcType, asyncQueue, asyncServerHandler, rpcServer.threadNum());
                     break;
                 default:
@@ -109,8 +113,8 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
     /**
      * 实例化 RpcServerHandler
      */
-    private RpcServerHandler rpcServerHandler(String rpcName, RpcType rpcType, Object rpcServerBean, Validator validator, RpcProperties rpcProperties, RpcServerDuplicateHandler rpcServerDuplicateHandler) {
-        return registerBean(this.applicationContext, rpcType.getName() + "-RpcServerHandler-" + rpcName, RpcServerHandler.class, rpcServerBean, rpcName, rpcType, validator, rpcProperties, rpcServerDuplicateHandler);
+    private RpcServerHandler rpcServerHandler(String rpcName, RpcType rpcType, Object rpcServerBean, Validator validator, RpcProperties rpcProperties, RpcServerHandlerInterceptor rpcServerHandlerInterceptor) {
+        return registerBean(this.applicationContext, rpcType.getName() + "-RpcServerHandler-" + rpcName, RpcServerHandler.class, rpcServerBean, rpcName, rpcType, validator, rpcProperties, rpcServerHandlerInterceptor);
     }
 
     /**
@@ -122,6 +126,20 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
         messageListenerContainer.setMessageListener(rpcServerHandler);
         messageListenerContainer.setAcknowledgeMode(AcknowledgeMode.MANUAL);
         messageListenerContainer.setConcurrentConsumers(threadNum);
+    }
+
+    /**
+     * 实例化 Validator
+     */
+    private Validator getValidator() {
+        if (this.validator == null) {
+            ValidatorFactory validatorFactory = Validation.byProvider(HibernateValidator.class)
+                    .configure()
+                    .failFast(getRpcProperties().getValidatorFailFast().equals("true"))
+                    .buildValidatorFactory();
+            this.validator = validatorFactory.getValidator();
+        }
+        return this.validator;
     }
 
     /**
