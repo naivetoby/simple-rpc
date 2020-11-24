@@ -48,6 +48,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
     private final static Logger LOGGER = LoggerFactory.getLogger(RpcServerHandler.class);
 
     private final static Map<String, FastMethod> FAST_METHOD_MAP = new ConcurrentHashMap<>();
+    private final static Map<String, Boolean> METHOD_ALLOW_DUPLICATE_MAP = new ConcurrentHashMap<>();
 
     private final Object rpcServerBean;
     private final String rpcName;
@@ -69,6 +70,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
     public void afterPropertiesSet() {
         // 初始化所有接口
         Class<?> rpcServerClass = this.rpcServerBean.getClass();
+        FastClass fastClass = FastClass.create(rpcServerClass);
         for (Method targetMethod : rpcServerClass.getMethods()) {
             if (targetMethod != null) {
                 RpcServerMethod rpcServerMethod = AnnotationUtils.findAnnotation(targetMethod, RpcServerMethod.class);
@@ -81,7 +83,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                     if (FAST_METHOD_MAP.containsKey(key)) {
                         throw new RuntimeException("Class: " + rpcServerClass.getName() + ", Method: " + methodName + " 重复");
                     }
-                    FastMethod fastMethod = FastClass.create(rpcServerClass).getMethod(targetMethod);
+                    FastMethod fastMethod = fastClass.getMethod(targetMethod);
                     if (fastMethod == null) {
                         throw new RuntimeException("Class: " + rpcServerClass.getName() + ", Method: " + targetMethod.getName() + " Invoke Exception");
                     }
@@ -93,6 +95,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                         throw new RuntimeException("只能包含唯一参数且参数类型只能为 JSONObject 或者 JavaBean, Class: " + rpcServerClass.getName() + ", Method: " + fastMethod.getName());
                     }
                     FAST_METHOD_MAP.put(key, fastMethod);
+                    METHOD_ALLOW_DUPLICATE_MAP.put(key, rpcServerMethod.allowDuplicate());
                     LOGGER.debug(this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + methodName + " 已启动");
                 }
             }
@@ -138,7 +141,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                 // 异步执行任务
                 if (RpcType.ASYNC == this.rpcType) {
                     long start = System.currentTimeMillis();
-                    asyncExecute(command, data, messageProperties.getCorrelationId());
+                    asyncExecute(command, data);
                     double offset = System.currentTimeMillis() - start;
                     if (offset > this.rpcProperties.getServerSlowCallTime()) {
                         LOGGER.warn("Call Slowing! Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Received: " + messageStr);
@@ -193,13 +196,18 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
     /**
      * 异步调用
      */
-    private void asyncExecute(String command, Object data, String correlationId) throws InvocationTargetException {
+    private void asyncExecute(String command, Object data) throws InvocationTargetException {
         // 获取当前服务的反射方法调用
         String key = this.rpcType.getName() + "_" + this.rpcName + "_" + command;
         // 通过缓存来优化性能
         FastMethod fastMethod = FAST_METHOD_MAP.get(key);
         if (fastMethod == null) {
             LOGGER.error("Not Found! " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command);
+            return;
+        }
+        // 重复调用检测
+        if (!METHOD_ALLOW_DUPLICATE_MAP.get(key) && this.rpcServerHandlerInterceptor.duplicateHandle(key, data)) {
+            LOGGER.warn("Call Duplicate! " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command);
             return;
         }
         Class<?> parameterType = fastMethod.getParameterTypes()[0];
@@ -232,10 +240,6 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                 }
             }
         }
-        if (this.rpcServerHandlerInterceptor != null && this.rpcServerHandlerInterceptor.duplicateHandle(correlationId, key, data)) {
-            LOGGER.warn("Call Duplicate! " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command);
-            return;
-        }
         // 通过发射来调用方法
         fastMethod.invoke(this.rpcServerBean, new Object[]{data});
     }
@@ -251,6 +255,17 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
         if (fastMethod == null) {
             LOGGER.error("Not Found! " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command);
             return null;
+        }
+        // 重复调用检测
+        if (this.rpcServerHandlerInterceptor.rpcDuplicateHandle(correlationId)) {
+            LOGGER.warn("Call Duplicate! " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command);
+            ServerResult resultData = ServerResult.buildFailureMessage("Call Duplicate").errorCode(-1);
+            return JSONObject.parseObject(resultData.toString());
+        }
+        if (!METHOD_ALLOW_DUPLICATE_MAP.get(key) && this.rpcServerHandlerInterceptor.duplicateHandle(key, data)) {
+            LOGGER.warn("Call Duplicate! " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command);
+            ServerResult resultData = ServerResult.buildFailureMessage("Call Duplicate").errorCode(-1);
+            return JSONObject.parseObject(resultData.toString());
         }
         Class<?> parameterType = fastMethod.getParameterTypes()[0];
         // JavaBean 参数
@@ -282,11 +297,6 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                     break;
                 }
             }
-        }
-        if (this.rpcServerHandlerInterceptor != null && this.rpcServerHandlerInterceptor.duplicateHandle(correlationId, key, data)) {
-            LOGGER.warn("Call Duplicate! " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command);
-            ServerResult resultData = ServerResult.buildFailureMessage("Call Duplicate").errorCode(-1);
-            return JSONObject.parseObject(resultData.toString());
         }
         // 通过发射来调用方法
         return JSONObject.parseObject(fastMethod.invoke(this.rpcServerBean, new Object[]{data}).toString());

@@ -14,4 +14,7 @@ import java.lang.annotation.*;
 public @interface RpcServerMethod {
 
     String value() default "";
+
+    boolean allowDuplicate() default false;
+
 }
