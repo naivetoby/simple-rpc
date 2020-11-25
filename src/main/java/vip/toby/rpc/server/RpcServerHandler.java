@@ -6,6 +6,7 @@ import com.alibaba.fastjson.parser.ParserConfig;
 import com.alibaba.fastjson.parser.deserializer.JavaBeanDeserializer;
 import com.rabbitmq.client.AMQP.BasicProperties;
 import com.rabbitmq.client.Channel;
+import net.sf.cglib.core.Constants;
 import net.sf.cglib.reflect.FastClass;
 import net.sf.cglib.reflect.FastMethod;
 import org.apache.commons.lang3.StringUtils;
@@ -99,6 +100,11 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                     LOGGER.debug(this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + methodName + " 已启动");
                 }
             }
+        }
+        try {
+            fastClass.invoke("toString", Constants.EMPTY_CLASS_ARRAY, this.rpcServerBean, new Object[]{});
+        } catch (InvocationTargetException e) {
+            // nothing to do
         }
         LOGGER.info(this.rpcType.getName() + "-RpcServerHandler-" + this.rpcName + " 已启动");
     }
@@ -257,7 +263,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
             return null;
         }
         // 重复调用检测
-        if (this.rpcServerHandlerInterceptor.rpcDuplicateHandle(correlationId)) {
+        if (this.rpcServerHandlerInterceptor.rpcDuplicateHandle(key, correlationId)) {
             LOGGER.warn("Call Duplicate! " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command);
             ServerResult resultData = ServerResult.buildFailureMessage("Call Duplicate").errorCode(-1);
             return JSONObject.parseObject(resultData.toString());

@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 public class RpcServerBaseHandlerInterceptor implements RpcServerHandlerInterceptor {
 
     @Override
-    public boolean rpcDuplicateHandle(String correlationId) {
+    public boolean rpcDuplicateHandle(String method, String correlationId) {
         return false;
     }
 
