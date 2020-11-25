@@ -6,6 +6,7 @@ import com.alibaba.fastjson.parser.ParserConfig;
 import com.alibaba.fastjson.parser.deserializer.JavaBeanDeserializer;
 import com.rabbitmq.client.AMQP.BasicProperties;
 import com.rabbitmq.client.Channel;
+import net.sf.cglib.core.Constants;
 import net.sf.cglib.reflect.FastClass;
 import net.sf.cglib.reflect.FastMethod;
 import org.apache.commons.lang3.StringUtils;
@@ -102,6 +103,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                         }
                         // 提前预热，其实毫无意义
                         validator.validate(JSON.parseObject(JSON.toJSONString(new JSONObject()), parameterTypes[0]), Default.class);
+
                     }
                     FAST_METHOD_MAP.put(key, fastMethod);
                     FAST_METHOD_PARAMETER_TYPE_MAP.put(key, parameterType);
@@ -109,6 +111,12 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                     LOGGER.debug(this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + methodName + " 已启动");
                 }
             }
+        }
+        // 提前预热，其实毫无意义
+        try {
+            fastClass.invoke("toString", Constants.EMPTY_CLASS_ARRAY, this.rpcServerBean, new Object[]{});
+        } catch (InvocationTargetException e) {
+            // nothing to do
         }
         LOGGER.info(this.rpcType.getName() + "-RpcServerHandler-" + this.rpcName + " 已启动");
     }
