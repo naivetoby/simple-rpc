@@ -68,7 +68,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
     }
 
     @Override
-    public void afterPropertiesSet() {
+    public void afterPropertiesSet() throws IllegalAccessException, InstantiationException {
         // 初始化所有接口
         Class<?> rpcServerClass = this.rpcServerBean.getClass();
         FastClass fastClass = FastClass.create(rpcServerClass);
@@ -101,7 +101,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                             throw new RuntimeException("只能包含唯一参数且参数类型只能为 JSONObject 或者 JavaBean, Class: " + rpcServerClass.getName() + ", Method: " + fastMethod.getName());
                         }
                         // 提前预热，其实毫无意义
-                        validator.validate(new JSONObject().toJavaObject(parameterTypes[0]), Default.class);
+                        validator.validate(JSON.parseObject(JSON.toJSONString(parameterType.newInstance()), parameterType), Default.class);
                     }
                     FAST_METHOD_MAP.put(key, fastMethod);
                     FAST_METHOD_PARAMETER_TYPE_MAP.put(key, parameterType);

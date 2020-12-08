@@ -14,7 +14,6 @@ import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import vip.toby.rpc.annotation.RpcServer;
 import vip.toby.rpc.entity.RpcType;
@@ -40,7 +39,6 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
     private ConfigurableApplicationContext applicationContext;
 
     @Autowired
-    @Lazy
     private ConnectionFactory connectionFactory;
 
     @Autowired(required = false)
