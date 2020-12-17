@@ -106,6 +106,7 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
         RabbitTemplate asyncSender = registerBean(RpcType.ASYNC.getName() + "-Sender-" + rpcName, RabbitTemplate.class, connectionFactory);
         asyncSender.setDefaultReceiveQueue(rpcName + ".async");
         asyncSender.setRoutingKey(rpcName + ".async");
+        asyncSender.setUserCorrelationId(true);
         return asyncSender;
     }
 
@@ -123,6 +124,7 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
         syncSender.setReplyAddress(replyQueue.getName());
         syncSender.setReplyTimeout(replyTimeout);
         syncSender.setRetryTemplate(retryTemplate);
+        syncSender.setUserCorrelationId(true);
         return syncSender;
     }
 

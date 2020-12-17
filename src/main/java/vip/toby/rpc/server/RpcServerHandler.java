@@ -151,7 +151,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                 // 异步执行任务
                 if (RpcType.ASYNC == this.rpcType) {
                     long start = System.currentTimeMillis();
-                    asyncExecute(command, data);
+                    asyncExecute(command, data, messageProperties.getCorrelationId());
                     double offset = System.currentTimeMillis() - start;
                     if (offset > this.rpcProperties.getServerSlowCallTime()) {
                         LOGGER.warn("Call Slowing! Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Received: " + messageStr);
@@ -206,7 +206,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
     /**
      * 异步调用
      */
-    private void asyncExecute(String command, Object data) throws InvocationTargetException {
+    private void asyncExecute(String command, Object data, String correlationId) throws InvocationTargetException {
         // 获取当前服务的反射方法调用
         String key = this.rpcType.getName() + "_" + this.rpcName + "_" + command;
         // 通过缓存来优化性能
@@ -216,6 +216,11 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
             return;
         }
         // 重复调用检测
+        if (this.rpcServerHandlerInterceptor != null && this.rpcServerHandlerInterceptor.rpcDuplicateHandle(key, correlationId)) {
+            LOGGER.warn("Call Duplicate! " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command);
+            ServerResult resultData = ServerResult.buildFailureMessage("Call Duplicate").errorCode(-1);
+            return;
+        }
         if (!METHOD_ALLOW_DUPLICATE_MAP.get(key) && this.rpcServerHandlerInterceptor != null && this.rpcServerHandlerInterceptor.duplicateHandle(key, data)) {
             LOGGER.warn("Call Duplicate! " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command);
             return;
