@@ -40,7 +40,7 @@ public class ClassPathRpcClientScanner extends ClassPathBeanDefinitionScanner {
     public Set<BeanDefinitionHolder> doScan(String... basePackages) {
         Set<BeanDefinitionHolder> beanDefinitions = super.doScan(basePackages);
         if (beanDefinitions.isEmpty()) {
-            LOGGER.debug("No @RpcClient was found in '" + Arrays.toString(basePackages) + "' package. Please check your configuration.");
+            LOGGER.debug("No @RpcClient was found in '{}' package. Please check your configuration.", Arrays.toString(basePackages));
         } else {
             processBeanDefinitions(beanDefinitions);
         }

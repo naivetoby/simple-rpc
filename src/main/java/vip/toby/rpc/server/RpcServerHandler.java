@@ -153,11 +153,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                     long start = System.currentTimeMillis();
                     asyncExecute(command, data, messageProperties.getCorrelationId());
                     double offset = System.currentTimeMillis() - start;
-                    if (offset > this.rpcProperties.getServerSlowCallTime()) {
-                        LOGGER.warn("Call Slowing! Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Received: " + messageStr);
-                    } else {
-                        LOGGER.info("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Received: " + messageStr);
-                    }
+                    log(messageStr, command, offset);
                     return;
                 }
                 // 同步执行任务并返回结果
@@ -165,11 +161,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                 Object resultData = syncExecute(command, data, messageProperties.getCorrelationId());
                 if (resultData != null) {
                     long offset = System.currentTimeMillis() - start;
-                    if (offset > this.rpcProperties.getServerSlowCallTime()) {
-                        LOGGER.warn("Call Slowing! Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Received: " + messageStr);
-                    } else {
-                        LOGGER.info("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Received: " + messageStr);
-                    }
+                    log(messageStr, command, offset);
                     // 修改状态
                     serverStatus = ServerStatus.SUCCESS;
                     resultJson.put("data", resultData);
@@ -203,6 +195,14 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
         }
     }
 
+    private void log(String messageStr, String command, double offset) {
+        if (offset > this.rpcProperties.getServerSlowCallTime()) {
+            LOGGER.warn("Call Slowing! Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Received: " + messageStr);
+        } else {
+            LOGGER.info("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command + ", Received: " + messageStr);
+        }
+    }
+
     /**
      * 异步调用
      */
@@ -218,7 +218,6 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
         // 重复调用检测
         if (this.rpcServerHandlerInterceptor != null && this.rpcServerHandlerInterceptor.rpcDuplicateHandle(key, correlationId)) {
             LOGGER.warn("Call Duplicate! " + this.rpcType.getName() + "-RpcServer-" + this.rpcName + ", Method: " + command);
-            ServerResult resultData = ServerResult.buildFailureMessage("Call Duplicate").errorCode(-1);
             return;
         }
         if (!METHOD_ALLOW_DUPLICATE_MAP.get(key) && this.rpcServerHandlerInterceptor != null && this.rpcServerHandlerInterceptor.duplicateHandle(key, data)) {
@@ -237,11 +236,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                 // 如果直接标注了@Validated，那么直接开启校验
                 // 如果没有，那么判断参数前是否有Valid起头的注解
                 if (validatedAnn != null || ann.annotationType().getSimpleName().startsWith("Valid")) {
-                    Object hints = (validatedAnn != null ? validatedAnn.value() : AnnotationUtils.getValue(ann));
-                    if (hints == null) {
-                        hints = Default.class;
-                    }
-                    Class<?>[] validationHints = (hints instanceof Class<?>[] ? (Class<?>[]) hints : new Class<?>[]{(Class<?>) hints});
+                    Class<?>[] validationHints = validated(ann, validatedAnn);
                     //执行校验
                     Set<ConstraintViolation<Object>> constraintViolations = validator.validate(validationHints);
                     if (!constraintViolations.isEmpty()) {
@@ -294,11 +289,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                 // 如果直接标注了@Validated，那么直接开启校验
                 // 如果没有，那么判断参数前是否有Valid起头的注解
                 if (validatedAnn != null || ann.annotationType().getSimpleName().startsWith("Valid")) {
-                    Object hints = (validatedAnn != null ? validatedAnn.value() : AnnotationUtils.getValue(ann));
-                    if (hints == null) {
-                        hints = Default.class;
-                    }
-                    Class<?>[] validationHints = (hints instanceof Class<?>[] ? (Class<?>[]) hints : new Class<?>[]{(Class<?>) hints});
+                    Class<?>[] validationHints = validated(ann, validatedAnn);
                     //执行校验
                     Set<ConstraintViolation<Object>> constraintViolations = validator.validate(data, validationHints);
                     if (!constraintViolations.isEmpty()) {
@@ -315,6 +306,14 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
         }
         // 通过发射来调用方法
         return fastMethod.invoke(this.rpcServerBean, new Object[]{data}).toString();
+    }
+
+    private Class<?>[] validated(Annotation ann, Validated validatedAnn) {
+        Object hints = (validatedAnn != null ? validatedAnn.value() : AnnotationUtils.getValue(ann));
+        if (hints == null) {
+            hints = Default.class;
+        }
+        return (hints instanceof Class<?>[] ? (Class<?>[]) hints : new Class<?>[]{(Class<?>) hints});
     }
 
 }

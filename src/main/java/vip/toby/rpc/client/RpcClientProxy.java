@@ -125,9 +125,9 @@ public class RpcClientProxy<T> implements InvocationHandler {
             RpcResult rpcResult = new RpcResult(ServerResult.build(OperateStatus.getOperateStatus(serverResultJson.getIntValue("status"))).message(serverResultJson.getString("message")).result(serverResultJson.get("result")).errorCode(serverResultJson.getIntValue("errorCode")));
             long offset = System.currentTimeMillis() - start;
             if (offset > this.rpcProperties.getClientSlowCallTime()) {
-                LOGGER.warn("Call Slowing! Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcClient-" + this.rpcName + ", Method: " + methodName + ", Param: " + paramDataJsonString + ", RpcResult: " + rpcResult.toString());
+                LOGGER.warn("Call Slowing! Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcClient-" + this.rpcName + ", Method: " + methodName + ", Param: " + paramDataJsonString + ", RpcResult: " + rpcResult);
             } else {
-                LOGGER.debug("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcClient-" + this.rpcName + ", Method: " + methodName + ", Param: " + paramDataJsonString + ", RpcResult: " + rpcResult.toString());
+                LOGGER.debug("Duration: " + offset + "ms, " + this.rpcType.getName() + "-RpcClient-" + this.rpcName + ", Method: " + methodName + ", Param: " + paramDataJsonString + ", RpcResult: " + rpcResult);
             }
             return rpcResult;
         } catch (Exception e) {
