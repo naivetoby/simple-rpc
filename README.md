@@ -12,12 +12,12 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>2.3.5.RELEASE</version>
+        <version>2.6.3</version>
     </parent>
     
     <groupId>com.demo</groupId>
     <artifactId>demo</artifactId>
-    <version>1.0.0.RELEASE</version>
+    <version>1.0.0</version>
 
     <dependencies>
         <dependency>
@@ -27,7 +27,7 @@
         <dependency>
             <groupId>vip.toby.rpc</groupId>
             <artifactId>simple-rpc</artifactId>
-            <version>1.4.3.RELEASE</version>
+            <version>1.4.4</version>
         </dependency>
     </dependencies>
 </project>
