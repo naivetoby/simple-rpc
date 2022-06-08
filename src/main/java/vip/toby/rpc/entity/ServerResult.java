@@ -1,6 +1,6 @@
 package vip.toby.rpc.entity;
 
-import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson2.JSONObject;
 
 /**
  * ServerResult

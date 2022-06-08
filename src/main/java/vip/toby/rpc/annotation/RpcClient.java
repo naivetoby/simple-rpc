@@ -21,4 +21,5 @@ public @interface RpcClient {
     int maxAttempts() default 3;
 
     RpcType type() default RpcType.SYNC;
+
 }

@@ -13,4 +13,5 @@ import java.lang.annotation.*;
 public @interface RpcClientMethod {
 
     String value() default "";
+
 }

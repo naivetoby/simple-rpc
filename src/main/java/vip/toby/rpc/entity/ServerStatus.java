@@ -1,6 +1,6 @@
 package vip.toby.rpc.entity;
 
-import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson2.JSONObject;
 
 /**
  * rpc调用状态码
@@ -53,4 +53,5 @@ public enum ServerStatus {
         str.put("message", this.message);
         return str.toJSONString();
     }
+
 }

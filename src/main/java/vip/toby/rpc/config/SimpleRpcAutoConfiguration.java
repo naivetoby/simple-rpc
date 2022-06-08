@@ -1,8 +1,6 @@
 package vip.toby.rpc.config;
 
-import com.alibaba.fastjson.parser.ParserConfig;
-import com.alibaba.fastjson.serializer.SerializeConfig;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
 import vip.toby.rpc.annotation.EnableSimpleRpc;
 
 /**
@@ -10,13 +8,8 @@ import vip.toby.rpc.annotation.EnableSimpleRpc;
  *
  * @author toby
  */
-@Configuration
+@AutoConfiguration
 @EnableSimpleRpc
 public class SimpleRpcAutoConfiguration {
-
-    static {
-        new ParserConfig();
-        new SerializeConfig();
-    }
 
 }

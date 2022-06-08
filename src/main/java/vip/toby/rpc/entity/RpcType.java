@@ -39,4 +39,5 @@ public enum RpcType {
         }
         return SYNC;
     }
+
 }

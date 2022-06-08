@@ -1,6 +1,7 @@
 package vip.toby.rpc.entity;
 
-import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONObject;
 
 /**
  * RpcResult
@@ -33,10 +34,11 @@ public class RpcResult {
     @Override
     public String toString() {
         JSONObject result = new JSONObject();
-        result.put("serverStatus", JSONObject.parse(this.serverStatus.toString()));
+        result.put("serverStatus", JSON.parse(this.serverStatus.toString()));
         if (this.serverResult != null) {
-            result.put("serverResult", JSONObject.parse(this.serverResult.toString()));
+            result.put("serverResult", JSON.parse(this.serverResult.toString()));
         }
         return result.toJSONString();
     }
+
 }

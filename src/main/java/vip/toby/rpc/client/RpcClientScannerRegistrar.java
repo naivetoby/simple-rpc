@@ -1,7 +1,6 @@
 package vip.toby.rpc.client;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
@@ -18,9 +17,8 @@ import java.util.List;
  *
  * @author toby
  */
+@Slf4j
 public class RpcClientScannerRegistrar implements BeanFactoryAware, ImportBeanDefinitionRegistrar {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(RpcClientScannerRegistrar.class);
 
     private BeanFactory beanFactory;
 
@@ -28,15 +26,15 @@ public class RpcClientScannerRegistrar implements BeanFactoryAware, ImportBeanDe
     public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry) {
 
         if (!AutoConfigurationPackages.has(this.beanFactory)) {
-            LOGGER.debug("Could not determine auto-configuration package, automatic rpc-client scanning disabled.");
+            log.debug("Could not determine auto-configuration package, automatic rpc-client scanning disabled.");
             return;
         }
 
-        LOGGER.debug("Searching for rpc-client annotated with @RpcClient");
+        log.debug("Searching for rpc-client annotated with @RpcClient");
 
         List<String> packages = AutoConfigurationPackages.get(this.beanFactory);
-        if (LOGGER.isDebugEnabled()) {
-            packages.forEach(pkg -> LOGGER.debug("Using auto-configuration base package '{}'", pkg));
+        if (log.isDebugEnabled()) {
+            packages.forEach(pkg -> log.debug("Using auto-configuration base package '{}'", pkg));
         }
 
         BeanDefinitionBuilder builder = BeanDefinitionBuilder.genericBeanDefinition(RpcClientScannerConfigurer.class);

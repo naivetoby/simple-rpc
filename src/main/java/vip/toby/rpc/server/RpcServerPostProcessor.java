@@ -1,5 +1,6 @@
 package vip.toby.rpc.server;
 
+import lombok.RequiredArgsConstructor;
 import org.hibernate.validator.HibernateValidator;
 import org.springframework.amqp.core.AcknowledgeMode;
 import org.springframework.amqp.core.Binding;
@@ -33,13 +34,12 @@ import java.util.Map;
  * @author toby
  */
 @Component
+@RequiredArgsConstructor
 public class RpcServerPostProcessor implements BeanPostProcessor {
 
-    @Autowired
-    private ConfigurableApplicationContext applicationContext;
+    private final ConfigurableApplicationContext applicationContext;
 
-    @Autowired
-    private ConnectionFactory connectionFactory;
+    private final ConnectionFactory connectionFactory;
 
     @Autowired(required = false)
     private RpcServerBaseHandlerInterceptor rpcServerBaseHandlerInterceptor;
@@ -196,4 +196,5 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
         beanFactory.registerBeanDefinition(name, beanDefinition);
         return applicationContext.getBean(name, clazz);
     }
+
 }

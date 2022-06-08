@@ -40,4 +40,5 @@ public class RpcClientScannerConfigurer implements BeanDefinitionRegistryPostPro
     public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) throws BeansException {
 
     }
+
 }

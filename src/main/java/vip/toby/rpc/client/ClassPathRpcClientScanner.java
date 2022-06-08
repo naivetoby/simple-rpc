@@ -1,7 +1,6 @@
 package vip.toby.rpc.client;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinitionHolder;
 import org.springframework.beans.factory.support.AbstractBeanDefinition;
@@ -19,9 +18,8 @@ import java.util.Set;
  *
  * @author toby
  */
+@Slf4j
 public class ClassPathRpcClientScanner extends ClassPathBeanDefinitionScanner {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(ClassPathRpcClientScanner.class);
 
     ClassPathRpcClientScanner(BeanDefinitionRegistry registry) {
         super(registry, false);
@@ -40,7 +38,7 @@ public class ClassPathRpcClientScanner extends ClassPathBeanDefinitionScanner {
     public Set<BeanDefinitionHolder> doScan(String... basePackages) {
         Set<BeanDefinitionHolder> beanDefinitions = super.doScan(basePackages);
         if (beanDefinitions.isEmpty()) {
-            LOGGER.debug("No @RpcClient was found in '{}' package. Please check your configuration.", Arrays.toString(basePackages));
+            log.debug("No @RpcClient was found in '{}' package. Please check your configuration.", Arrays.toString(basePackages));
         } else {
             processBeanDefinitions(beanDefinitions);
         }
