@@ -14,6 +14,7 @@ import org.springframework.amqp.rabbit.listener.api.ChannelAwareMessageListener;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.validation.annotation.Validated;
+import vip.toby.rpc.annotation.RpcDTO;
 import vip.toby.rpc.annotation.RpcServerMethod;
 import vip.toby.rpc.entity.RpcType;
 import vip.toby.rpc.entity.ServerResult;
@@ -27,7 +28,6 @@ import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -89,15 +89,11 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                     }
                     Class<?>[] parameterTypes = fastMethod.getParameterTypes();
                     if (parameterTypes == null || parameterTypes.length != 1) {
-                        throw new RuntimeException("只能包含唯一参数且参数类型只能为 JSONObject 或者 JavaBean, Class: " + rpcServerClass.getName() + ", Method: " + fastMethod.getName());
+                        throw new RuntimeException("只能包含唯一参数, Class: " + rpcServerClass.getName() + ", Method: " + fastMethod.getName());
                     }
                     Class<?> parameterType = parameterTypes[0];
-                    if (parameterType != JSONObject.class) {
-                        if (isNotJavaBean(parameterType)) {
-                            throw new RuntimeException("只能包含唯一参数且参数类型只能为 JSONObject 或者 JavaBean, Class: " + rpcServerClass.getName() + ", Method: " + fastMethod.getName());
-                        }
-                        // 提前预热，其实毫无意义
-                        // validator.validate(JSON.parseObject(JSON.toJSONString(parameterType.getDeclaredConstructor().newInstance()), parameterType), Default.class);
+                    if (parameterType != JSONObject.class && parameterType.getAnnotation(RpcDTO.class) == null) {
+                        throw new RuntimeException("参数类型只能为 JSONObject 或者添加 @RpcDTO 注解, Class: " + rpcServerClass.getName() + ", Method: " + fastMethod.getName());
                     }
                     FAST_METHOD_MAP.put(key, fastMethod);
                     FAST_METHOD_PARAMETER_TYPE_MAP.put(key, parameterType);
@@ -107,16 +103,6 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
             }
         }
         log.info("{}-RpcServerHandler-{} 已启动", this.rpcType.getName(), this.rpcName);
-    }
-
-    // FastJSON 根据 getDeserializer 返回值类型判断是否为 Java Bean 类型
-    // FIXME 目前 FastJSON2 无法处理, 所以瞎几把写的
-    public static boolean isNotJavaBean(Type type) {
-        try {
-            return ((Class<?>) type.getClass().getField("TYPE").get(null)).isPrimitive();
-        } catch (Exception e) {
-            return false;
-        }
     }
 
     @Override

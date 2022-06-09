@@ -9,6 +9,7 @@ import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import vip.toby.rpc.annotation.RpcClientMethod;
+import vip.toby.rpc.annotation.RpcDTO;
 import vip.toby.rpc.entity.*;
 import vip.toby.rpc.properties.RpcProperties;
 
@@ -41,7 +42,7 @@ public class RpcClientProxy<T> implements InvocationHandler {
     }
 
     @Override
-    public Object invoke(Object proxy, Method method, Object[] args) {
+    public Object invoke(Object proxy, Method method, Object[] args) throws NoSuchFieldException, IllegalAccessException {
         // 获取方法注解
         RpcClientMethod rpcClientMethod = method.getAnnotation(RpcClientMethod.class);
         if (rpcClientMethod == null) {
@@ -49,7 +50,7 @@ public class RpcClientProxy<T> implements InvocationHandler {
                 if (Object.class.equals(method.getDeclaringClass())) {
                     return method.invoke(this, args);
                 }
-                throw new RuntimeException("未加@RpcClientMethod, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
+                throw new RuntimeException("未加 @RpcClientMethod, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
             } catch (Throwable t) {
                 throw new RuntimeException(t);
             }
@@ -69,12 +70,12 @@ public class RpcClientProxy<T> implements InvocationHandler {
         Parameter[] parameters = method.getParameters();
         for (int i = 0; i < parameters.length; i++) {
             Parameter parameter = parameters[i];
-            if (JSON.isValidObject(args[i].toString())) {
-                if (parameter.getType() == JSONObject.class) {
-                    data.putAll((JSONObject) args[i]);
-                } else {
-                    data = (JSONObject) JSON.toJSON(args[i]);
-                }
+            if (parameter.getType() == JSONObject.class) {
+                // JSONObject
+                data.putAll((JSONObject) args[i]);
+            } else if (parameter.getType().getAnnotation(RpcDTO.class) != null) {
+                // 添加 @RpcDTO 的 JavaBean
+                data = (JSONObject) JSON.toJSON(args[i]);
             } else {
                 // Spring-Boot 框架默认已加上 -parameters 编译参数
                 data.put(parameter.getName(), args[i]);

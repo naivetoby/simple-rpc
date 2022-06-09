@@ -1,6 +1,7 @@
 package vip.toby.rpc.entity;
 
 import com.alibaba.fastjson2.JSONObject;
+import org.slf4j.helpers.MessageFormatter;
 
 /**
  * ServerResult
@@ -25,16 +26,24 @@ public class ServerResult {
         return new ServerResult(operateStatus, operateStatus.getMessage(), null, 0);
     }
 
+    public static ServerResult buildSuccess() {
+        return build(OperateStatus.SUCCESS);
+    }
+
+    public static ServerResult buildFailure() {
+        return build(OperateStatus.FAILURE);
+    }
+
     public static ServerResult buildSuccessResult(Object result) {
-        return new ServerResult(OperateStatus.SUCCESS, OperateStatus.SUCCESS.getMessage(), result, 0);
+        return buildSuccess().result(result);
     }
 
-    public static ServerResult buildFailureMessage(String message) {
-        return new ServerResult(OperateStatus.FAILURE, message, null, 0);
+    public static ServerResult buildFailureMessage(String format, Object... arguments) {
+        return buildFailure().message(format, arguments);
     }
 
-    public ServerResult message(String message) {
-        this.message = message;
+    public ServerResult message(String format, Object... arguments) {
+        this.message = MessageFormatter.format(format, arguments).getMessage();
         return this;
     }
 
