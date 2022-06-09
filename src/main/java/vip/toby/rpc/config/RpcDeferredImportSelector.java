@@ -28,14 +28,10 @@ public class RpcDeferredImportSelector implements DeferredImportSelector {
             RpcMode[] rpcModes = (RpcMode[]) annotationAttributes.get("mode");
             for (RpcMode rpcMode : rpcModes) {
                 switch (rpcMode) {
-                    case RPC_CLIENT:
-                        definitionRegistrars.add(RpcClientScannerRegistrar.class.getName());
-                        break;
-                    case RPC_SERVER:
-                        definitionRegistrars.add(RpcServerPostProcessor.class.getName());
-                        break;
-                    default:
-                        break;
+                    case RPC_CLIENT -> definitionRegistrars.add(RpcClientScannerRegistrar.class.getName());
+                    case RPC_SERVER -> definitionRegistrars.add(RpcServerPostProcessor.class.getName());
+                    default -> {
+                    }
                 }
             }
         }

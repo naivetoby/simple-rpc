@@ -1,7 +1,6 @@
 package vip.toby.rpc.server;
 
 import com.alibaba.fastjson2.JSON;
-import com.alibaba.fastjson2.JSONFactory;
 import com.alibaba.fastjson2.JSONObject;
 import com.rabbitmq.client.AMQP.BasicProperties;
 import com.rabbitmq.client.Channel;
@@ -65,7 +64,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
     }
 
     @Override
-    public void afterPropertiesSet() throws IllegalAccessException, InstantiationException {
+    public void afterPropertiesSet() {
         // 初始化所有接口
         Class<?> rpcServerClass = this.rpcServerBean.getClass();
         FastClass fastClass = FastClass.create(rpcServerClass);
@@ -94,11 +93,11 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                     }
                     Class<?> parameterType = parameterTypes[0];
                     if (parameterType != JSONObject.class) {
-                        if (!isJavaBean(parameterType)) {
+                        if (isNotJavaBean(parameterType)) {
                             throw new RuntimeException("只能包含唯一参数且参数类型只能为 JSONObject 或者 JavaBean, Class: " + rpcServerClass.getName() + ", Method: " + fastMethod.getName());
                         }
                         // 提前预热，其实毫无意义
-                        validator.validate(JSON.parseObject(JSON.toJSONString(parameterType.newInstance()), parameterType), Default.class);
+                        // validator.validate(JSON.parseObject(JSON.toJSONString(parameterType.getDeclaredConstructor().newInstance()), parameterType), Default.class);
                     }
                     FAST_METHOD_MAP.put(key, fastMethod);
                     FAST_METHOD_PARAMETER_TYPE_MAP.put(key, parameterType);
@@ -110,13 +109,14 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
         log.info("{}-RpcServerHandler-{} 已启动", this.rpcType.getName(), this.rpcName);
     }
 
-    private static boolean isJavaBean(Type type) {
-        if (null == type) {
-            throw new NullPointerException();
+    // FastJSON 根据 getDeserializer 返回值类型判断是否为 Java Bean 类型
+    // FIXME 目前 FastJSON2 无法处理, 所以瞎几把写的
+    public static boolean isNotJavaBean(Type type) {
+        try {
+            return ((Class<?>) type.getClass().getField("TYPE").get(null)).isPrimitive();
+        } catch (Exception e) {
+            return false;
         }
-        // FastJSON 根据 getDeserializer 返回值类型判断是否为 java bean 类型
-        // FIXME FastJSON2 不知道咋搞
-        return JSONFactory.getDefaultObjectReaderProvider().getObjectReader(type) != null;
     }
 
     @Override

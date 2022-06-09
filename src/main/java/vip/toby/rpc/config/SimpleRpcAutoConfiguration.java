@@ -1,6 +1,5 @@
 package vip.toby.rpc.config;
 
-import org.springframework.boot.autoconfigure.AutoConfiguration;
 import vip.toby.rpc.annotation.EnableSimpleRpc;
 
 /**
@@ -8,7 +7,6 @@ import vip.toby.rpc.annotation.EnableSimpleRpc;
  *
  * @author toby
  */
-@AutoConfiguration
 @EnableSimpleRpc
 public class SimpleRpcAutoConfiguration {
 

@@ -74,22 +74,22 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
         String rpcName = rpcServer.value();
         for (RpcType rpcType : rpcServer.type()) {
             switch (rpcType) {
-                case SYNC:
+                case SYNC -> {
                     Map<String, Object> params = new HashMap<>(1);
                     params.put("x-message-ttl", rpcServer.xMessageTTL());
                     Queue syncQueue = queue(rpcName, rpcType, params);
                     binding(rpcName, rpcType, syncQueue);
                     RpcServerHandler syncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, getValidator(), getRpcProperties(), rpcServerBaseHandlerInterceptor);
                     messageListenerContainer(rpcName, rpcType, syncQueue, syncServerHandler, rpcServer.threadNum());
-                    break;
-                case ASYNC:
+                }
+                case ASYNC -> {
                     Queue asyncQueue = queue(rpcName, rpcType, null);
                     binding(rpcName, rpcType, asyncQueue);
                     RpcServerHandler asyncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, getValidator(), getRpcProperties(), rpcServerBaseHandlerInterceptor);
                     messageListenerContainer(rpcName, rpcType, asyncQueue, asyncServerHandler, rpcServer.threadNum());
-                    break;
-                default:
-                    break;
+                }
+                default -> {
+                }
             }
         }
     }

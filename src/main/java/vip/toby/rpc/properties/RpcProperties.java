@@ -4,6 +4,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.Objects;
+
 @Configuration
 @ConfigurationProperties(prefix = "simple-rpc", ignoreInvalidFields = true)
 public class RpcProperties {
@@ -15,17 +17,11 @@ public class RpcProperties {
     private String validatorFailFast;
 
     public int getClientSlowCallTime() {
-        if (this.clientSlowCallTime == null) {
-            return 1000;
-        }
-        return this.clientSlowCallTime;
+        return Objects.requireNonNullElse(this.clientSlowCallTime, 1000);
     }
 
     public int getServerSlowCallTime() {
-        if (this.serverSlowCallTime == null) {
-            return 1000;
-        }
-        return this.serverSlowCallTime;
+        return Objects.requireNonNullElse(this.serverSlowCallTime, 1000);
     }
 
     public String getValidatorFailFast() {

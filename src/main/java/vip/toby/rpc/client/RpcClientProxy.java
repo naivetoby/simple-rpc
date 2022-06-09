@@ -1,7 +1,6 @@
 package vip.toby.rpc.client;
 
 import com.alibaba.fastjson2.JSON;
-import com.alibaba.fastjson2.JSONFactory;
 import com.alibaba.fastjson2.JSONObject;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -16,7 +15,6 @@ import vip.toby.rpc.properties.RpcProperties;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
@@ -71,14 +69,15 @@ public class RpcClientProxy<T> implements InvocationHandler {
         Parameter[] parameters = method.getParameters();
         for (int i = 0; i < parameters.length; i++) {
             Parameter parameter = parameters[i];
-            if (isJavaBean(parameter.getType())) {
-                data = (JSONObject) JSON.toJSON(args[i]);
-                break;
-            } else if (parameter.getType() == JSONObject.class) {
-                data.putAll((JSONObject) args[i]);
+            if (JSON.isValidObject(args[i].toString())) {
+                if (parameter.getType() == JSONObject.class) {
+                    data.putAll((JSONObject) args[i]);
+                } else {
+                    data = (JSONObject) JSON.toJSON(args[i]);
+                }
             } else {
-                // Spring-Boot框架默认已加上-parameters编译参数
-                data.put(parameters[i].getName(), args[i]);
+                // Spring-Boot 框架默认已加上 -parameters 编译参数
+                data.put(parameter.getName(), args[i]);
             }
         }
         // 调用参数
@@ -128,6 +127,7 @@ public class RpcClientProxy<T> implements InvocationHandler {
             }
             return rpcResult;
         } catch (Exception e) {
+            this.sender.destroy();
             log.error("{}-RpcServer-{} Exception! Method: {}, Param: {}", this.rpcType.getName(), this.rpcName, methodName, paramDataJsonString);
             log.error(e.getMessage(), e);
             throw new RuntimeException(e);
@@ -137,14 +137,6 @@ public class RpcClientProxy<T> implements InvocationHandler {
     @Override
     public String toString() {
         return this.rpcType.getName() + "-RpcClient-" + this.rpcName;
-    }
-
-    private static boolean isJavaBean(Type type) {
-        if (null == type) {
-            throw new NullPointerException();
-        }
-        // FIXME 不知道啥意思
-        return JSONFactory.getDefaultObjectReaderProvider().getObjectReader(type) != null;
     }
 
 }
