@@ -1,7 +1,6 @@
 package vip.toby.rpc.server;
 
 import com.alibaba.fastjson2.JSON;
-import com.alibaba.fastjson2.JSONB;
 import com.alibaba.fastjson2.JSONObject;
 import com.rabbitmq.client.AMQP.BasicProperties;
 import com.rabbitmq.client.Channel;
