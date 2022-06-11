@@ -27,7 +27,7 @@
         <dependency>
             <groupId>vip.toby.rpc</groupId>
             <artifactId>simple-rpc</artifactId>
-            <version>1.4.6</version>
+            <version>1.4.7</version>
         </dependency>
     </dependencies>
 </project>
@@ -37,29 +37,32 @@
 ```java
 @RpcServer(value="rpc-queue-name", type = {RpcType.SYNC, RpcType.ASYNC}, xMessageTTL = 1000, threadNum = 1)
 public class Server {
-    
+
     @RpcServerMethod
-    public ServerResult methodName1(@Validated JavaBean param) {
+    public ServerResult methodName1(JSONObject params) {
+        String param1 = params.getString("param1");
+        int param2 = params.getIntValue("param2");
         JSONObject result = new JSONObject();
         result.put("param1", param1);
         result.put("param2", param2);
         result.put("result", param1 + param2);
-        return ServerResult.buildSuccessResult(result);
+        return ServerResult.buildSuccessResult(result).message("ok");
     }
 
-    @RpcServerMethod("methodName2Alias")
-    public ServerResult methodName2(@Validated({Group2.class}) JavaBean param) {
-        return ServerResult.build(OperateStatus.FAILURE).errorCode(737);
-    }
-
-    @RpcServerMethod
-    public ServerResult methodName3Alias(@Valid JavaBean param) {
-        return ServerResult.build(OperateStatus.SUCCESS).message("操作成功");
-    }
-
-    @RpcServerMethod
-    public ServerResult methodName4(JSONObject params) {
+    @RpcServerMethod("methodName2-alias")
+    public ServerResult methodName2(JSONObject params) {
         return ServerResult.buildFailureMessage("失败").errorCode(233);
+    }
+
+    @RpcServerMethod
+    public ServerResult methodName3(@Validated PlusDTO plusDTO) {
+        int x = plusDTO.getX();
+        int y = plusDTO.getY();
+        JSONObject result = new JSONObject();
+        result.put("x", x);
+        result.put("y", y);
+        result.put("result", x + y);
+        return ServerResult.buildSuccessResult(result).message("ok");
     }
 
 }
@@ -73,14 +76,11 @@ public interface SyncClient {
     @RpcClientMethod
     RpcResult methodName1(String param1, int param2);
 
-    @RpcClientMethod
-    RpcResult methodName2Alias(JavaBean param);
-    
-    @RpcClientMethod("methodName3Alias")
-    RpcResult methodName3(String param1, int param2);
+    @RpcClientMethod("methodName2-alias")
+    RpcResult methodName2(String param1, int param2);
 
     @RpcClientMethod
-    RpcResult methodName4(JavaBean param);
+    RpcResult methodName3(PlusDTO plusDTO, JSONObject data, int x, int y);
 
 }
 
@@ -88,13 +88,61 @@ public interface SyncClient {
 public interface AsyncClient {
 
     @RpcClientMethod
-    void methodName1(JavaBean param);
+    void methodName1(String param1, int param2);
 
-    @RpcClientMethod("methodName2Alias")
-    void methodName2(JavaBean param);
+    @RpcClientMethod("methodName2-alias")
+    void methodName2(String param1, int param2);
 
 }
 ```
+
+## Application Demo
+```java
+@EnableSimpleRpc
+@SpringBootApplication
+@RequiredArgsConstructor
+@Slf4j
+public class Application {
+
+    private final SyncClient syncClient;
+    private final AsyncClient asyncClient;
+
+    public static void main(String[] args) {
+        SpringApplication.run(Application.class, args);
+    }
+
+    @PostConstruct
+    public void test() {
+        new Thread(() -> {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            syncClient.methodName1("param1", 2);
+            syncClient.methodName1("param1", 2);
+            syncClient.methodName1("dew", 46);
+            PlusDTO plusDTO = new PlusDTO();
+            plusDTO.setX(1);
+            plusDTO.setY(1);
+            JSONObject data = new JSONObject();
+            data.put("x", 2);
+            data.put("y", 2);
+            RpcResult rpcResult = syncClient.methodName3(plusDTO, data, 3, 3);
+            log.info("result: {}", rpcResult.getServerResult().getResult());
+            syncClient.methodName1("yyy", 2121);
+            asyncClient.methodName2("sss", 27);
+        }).start();
+    }
+
+}
+```
+
+## Demo 源码
+https://github.com/thinktkj/simple-rpc-demo
+
+## 目前适配 JDK 17 版本
+启动时，需要添加启动参数 vm: --add-opens java.base/java.lang=ALL-UNNAMED
 
 ## application.yml 配置
 ```yaml

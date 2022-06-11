@@ -41,7 +41,7 @@ public class RpcClientProxy<T> implements InvocationHandler {
     }
 
     @Override
-    public Object invoke(Object proxy, Method method, Object[] args) throws NoSuchFieldException, IllegalAccessException {
+    public Object invoke(Object proxy, Method method, Object[] args) {
         // 获取方法注解
         RpcClientMethod rpcClientMethod = method.getAnnotation(RpcClientMethod.class);
         if (rpcClientMethod == null) {
