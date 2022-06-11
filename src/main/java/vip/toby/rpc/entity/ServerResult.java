@@ -77,8 +77,7 @@ public class ServerResult {
         return errorCode;
     }
 
-    @Override
-    public String toString() {
+    public JSONObject toJSON() {
         JSONObject result = new JSONObject();
         result.put("status", this.operateStatus.getStatus());
         result.put("message", this.message);
@@ -87,7 +86,7 @@ public class ServerResult {
         } else {
             result.put("errorCode", this.errorCode);
         }
-        return result.toJSONString();
+        return result;
     }
 
 }

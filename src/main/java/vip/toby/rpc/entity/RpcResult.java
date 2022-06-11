@@ -1,6 +1,5 @@
 package vip.toby.rpc.entity;
 
-import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 
 /**
@@ -11,16 +10,36 @@ import com.alibaba.fastjson2.JSONObject;
 public class RpcResult {
 
     private final ServerStatus serverStatus;
-    private final ServerResult serverResult;
+    private ServerResult serverResult;
 
-    public RpcResult(ServerStatus serverStatus) {
+    private RpcResult(ServerStatus serverStatus, ServerResult serverResult) {
         this.serverStatus = serverStatus;
-        this.serverResult = null;
+        this.serverResult = serverResult;
     }
 
-    public RpcResult(ServerResult serverResult) {
-        this.serverStatus = ServerStatus.SUCCESS;
+    public static RpcResult build(ServerStatus serverStatus) {
+        return new RpcResult(serverStatus, null);
+    }
+
+    public static RpcResult buildSuccess() {
+        return build(ServerStatus.SUCCESS);
+    }
+
+    public static RpcResult buildFailure() {
+        return build(ServerStatus.FAILURE);
+    }
+
+    public static RpcResult buildNotExist() {
+        return build(ServerStatus.NOT_EXIST);
+    }
+
+    public static RpcResult buildUnavailable() {
+        return build(ServerStatus.UNAVAILABLE);
+    }
+
+    public RpcResult result(ServerResult serverResult) {
         this.serverResult = serverResult;
+        return this;
     }
 
     public ServerStatus getServerStatus() {
@@ -34,11 +53,11 @@ public class RpcResult {
     @Override
     public String toString() {
         JSONObject result = new JSONObject();
-        result.put("serverStatus", JSON.parse(this.serverStatus.toString()));
+        result.put("serverStatus", this.serverStatus.toJSON());
         if (this.serverResult != null) {
-            result.put("serverResult", JSON.parse(this.serverResult.toString()));
+            result.put("serverResult", this.serverResult.toJSON());
         }
-        return result.toJSONString();
+        return result.toString();
     }
 
 }

@@ -46,12 +46,11 @@ public enum ServerStatus {
         return FAILURE;
     }
 
-    @Override
-    public String toString() {
-        JSONObject str = new JSONObject();
-        str.put("status", this.status);
-        str.put("message", this.message);
-        return str.toJSONString();
+    public JSONObject toJSON() {
+        JSONObject json = new JSONObject();
+        json.put("status", this.status);
+        json.put("message", this.message);
+        return json;
     }
 
 }
