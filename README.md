@@ -12,7 +12,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>2.7.0</version>
+        <version>2.7.1</version>
     </parent>
     
     <groupId>com.demo</groupId>
@@ -27,7 +27,7 @@
         <dependency>
             <groupId>vip.toby.rpc</groupId>
             <artifactId>simple-rpc</artifactId>
-            <version>1.4.7</version>
+            <version>1.4.8</version>
         </dependency>
     </dependencies>
 </project>
