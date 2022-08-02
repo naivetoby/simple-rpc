@@ -94,7 +94,7 @@ public class RpcClientProxy<T> implements InvocationHandler {
         CorrelationData correlationData = new CorrelationData(UUID.randomUUID().toString());
         try {
             if (this.rpcType == RpcType.ASYNC) {
-                this.sender.sendAndReceive(message, correlationData);
+                this.sender.send(this.sender.getRoutingKey(), message, correlationData);
                 log.debug("{}-RpcClient-{}, Method: {}, Param: {}", this.rpcType.getName(), this.rpcName, methodName, paramData);
                 return null;
             }
