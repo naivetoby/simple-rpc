@@ -52,12 +52,10 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
         RpcClient rpcClient = this.rpcClientInterface.getAnnotation(RpcClient.class);
         String rpcName = rpcClient.value();
         RpcType rpcType = rpcClient.type();
-        int replyTimeout = rpcClient.replyTimeout();
-        int maxAttempts = rpcClient.maxAttempts();
         if (rpcType == RpcType.SYNC) {
             Queue replyQueue = replyQueue(rpcName, UUID.randomUUID().toString());
             replyBinding(rpcName, replyQueue);
-            RabbitTemplate syncSender = syncSender(rpcName, replyQueue, replyTimeout, maxAttempts, getConnectionFactory());
+            RabbitTemplate syncSender = syncSender(rpcName, replyQueue, getConnectionFactory());
             replyMessageListenerContainer(rpcName, replyQueue, syncSender, getConnectionFactory());
             sender = syncSender;
         } else {
@@ -113,16 +111,14 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
     /**
      * 实例化 SyncSender
      */
-    private RabbitTemplate syncSender(String rpcName, Queue replyQueue, int replyTimeout, int maxAttempts, ConnectionFactory connectionFactory) {
+    private RabbitTemplate syncSender(String rpcName, Queue replyQueue, ConnectionFactory connectionFactory) {
         SimpleRetryPolicy simpleRetryPolicy = new SimpleRetryPolicy();
-        simpleRetryPolicy.setMaxAttempts(maxAttempts);
         RetryTemplate retryTemplate = new RetryTemplate();
         retryTemplate.setRetryPolicy(simpleRetryPolicy);
         RabbitTemplate syncSender = registerBean(RpcType.SYNC.getName() + "-Sender-" + rpcName, RabbitTemplate.class, connectionFactory);
         syncSender.setDefaultReceiveQueue(rpcName);
         syncSender.setRoutingKey(rpcName);
         syncSender.setReplyAddress(replyQueue.getName());
-        syncSender.setReplyTimeout(replyTimeout);
         syncSender.setRetryTemplate(retryTemplate);
         syncSender.setUserCorrelationId(true);
         return syncSender;

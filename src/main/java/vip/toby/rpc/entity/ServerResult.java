@@ -38,8 +38,26 @@ public class ServerResult {
         return buildSuccess().result(result);
     }
 
+    public static ServerResult buildFailureMessage(String format, Object arg) {
+        return buildFailure().message(format, arg);
+    }
+
+    public static ServerResult buildFailureMessage(String format, Object arg1, Object arg2) {
+        return buildFailure().message(format, arg1, arg2);
+    }
+
     public static ServerResult buildFailureMessage(String format, Object... arguments) {
         return buildFailure().message(format, arguments);
+    }
+
+    public ServerResult message(String format, Object arg) {
+        this.message = MessageFormatter.format(format, arg).getMessage();
+        return this;
+    }
+
+    public ServerResult message(String format, Object arg1, Object arg2) {
+        this.message = MessageFormatter.format(format, arg1, arg2).getMessage();
+        return this;
     }
 
     public ServerResult message(String format, Object... arguments) {

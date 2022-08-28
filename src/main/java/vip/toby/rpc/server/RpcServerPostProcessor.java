@@ -9,7 +9,6 @@ import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
 import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
@@ -41,8 +40,7 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
 
     private final ConnectionFactory connectionFactory;
 
-    @Autowired(required = false)
-    private RpcServerBaseHandlerInterceptor rpcServerBaseHandlerInterceptor;
+    private final RpcServerBaseHandlerInterceptor rpcServerBaseHandlerInterceptor;
 
     private DirectExchange syncDirectExchange;
     private DirectExchange asyncDirectExchange;
