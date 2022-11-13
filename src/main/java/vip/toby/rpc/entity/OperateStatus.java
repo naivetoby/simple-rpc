@@ -7,10 +7,8 @@ package vip.toby.rpc.entity;
  */
 public enum OperateStatus {
 
-    // 调用成功
-    SUCCESS(1, "Success"),
-    // 调用失败
-    FAILURE(0, "Failure");
+    SUCCESS(1, "Success"), // 调用成功
+    FAILURE(0, "Failure"); // 调用失败
 
     private final int status;
     private final String message;

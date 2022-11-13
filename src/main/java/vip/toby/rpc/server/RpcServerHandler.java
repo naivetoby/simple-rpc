@@ -54,7 +54,14 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
     private final RpcProperties rpcProperties;
     private final RpcServerHandlerInterceptor rpcServerHandlerInterceptor;
 
-    RpcServerHandler(Object rpcServerBean, String rpcName, RpcType rpcType, Validator validator, RpcProperties rpcProperties, RpcServerHandlerInterceptor rpcServerHandlerInterceptor) {
+    RpcServerHandler(
+            Object rpcServerBean,
+            String rpcName,
+            RpcType rpcType,
+            Validator validator,
+            RpcProperties rpcProperties,
+            RpcServerHandlerInterceptor rpcServerHandlerInterceptor
+    ) {
         this.rpcServerBean = rpcServerBean;
         this.rpcName = rpcName;
         this.rpcType = rpcType;

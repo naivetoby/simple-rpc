@@ -111,14 +111,27 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
     /**
      * 实例化 RpcServerHandler
      */
-    private RpcServerHandler rpcServerHandler(String rpcName, RpcType rpcType, Object rpcServerBean, Validator validator, RpcProperties rpcProperties, RpcServerHandlerInterceptor rpcServerHandlerInterceptor) {
+    private RpcServerHandler rpcServerHandler(
+            String rpcName,
+            RpcType rpcType,
+            Object rpcServerBean,
+            Validator validator,
+            RpcProperties rpcProperties,
+            RpcServerHandlerInterceptor rpcServerHandlerInterceptor
+    ) {
         return registerBean(this.applicationContext, rpcType.getName() + "-RpcServerHandler-" + rpcName, RpcServerHandler.class, rpcServerBean, rpcName, rpcType, validator, rpcProperties, rpcServerHandlerInterceptor);
     }
 
     /**
      * 实例化 SimpleMessageListenerContainer
      */
-    private void messageListenerContainer(String rpcName, RpcType rpcType, Queue queue, RpcServerHandler rpcServerHandler, int threadNum) {
+    private void messageListenerContainer(
+            String rpcName,
+            RpcType rpcType,
+            Queue queue,
+            RpcServerHandler rpcServerHandler,
+            int threadNum
+    ) {
         SimpleMessageListenerContainer messageListenerContainer = registerBean(this.applicationContext, rpcType.getName() + "-MessageListenerContainer-" + rpcName, SimpleMessageListenerContainer.class, this.connectionFactory);
         messageListenerContainer.setQueueNames(queue.getName());
         messageListenerContainer.setMessageListener(rpcServerHandler);
@@ -131,10 +144,7 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
      */
     private Validator getValidator() {
         if (this.validator == null) {
-            ValidatorFactory validatorFactory = Validation.byProvider(HibernateValidator.class)
-                    .configure()
-                    .failFast(getRpcProperties().getValidatorFailFast().equals("true"))
-                    .buildValidatorFactory();
+            ValidatorFactory validatorFactory = Validation.byProvider(HibernateValidator.class).configure().failFast(getRpcProperties().getValidatorFailFast().equals("true")).buildValidatorFactory();
             this.validator = validatorFactory.getValidator();
         }
         return this.validator;
@@ -181,7 +191,12 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
     /**
      * 对象实例化并注册到Spring上下文
      */
-    private <T> T registerBean(ConfigurableApplicationContext applicationContext, String name, Class<T> clazz, Object... args) {
+    private <T> T registerBean(
+            ConfigurableApplicationContext applicationContext,
+            String name,
+            Class<T> clazz,
+            Object... args
+    ) {
         BeanDefinitionBuilder beanDefinitionBuilder = BeanDefinitionBuilder.genericBeanDefinition(clazz);
         if (args.length > 0) {
             for (Object arg : args) {

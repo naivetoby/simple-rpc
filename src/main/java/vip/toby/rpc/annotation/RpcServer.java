@@ -19,9 +19,9 @@ public @interface RpcServer {
 
     String value();
 
-    int xMessageTTL() default 1000;
+    int xMessageTTL() default 200;
 
-    int threadNum() default 1;
+    int threadNum() default 10;
 
     RpcType[] type() default {RpcType.SYNC, RpcType.ASYNC};
 

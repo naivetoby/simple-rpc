@@ -9,14 +9,14 @@ import com.alibaba.fastjson2.JSONObject;
  */
 public enum ServerStatus {
 
-    // 调用成功
-    SUCCESS(1, "Call Success"),
-    // 调用失败
-    FAILURE(0, "Call Failure"),
-    // 调用不存在
-    NOT_EXIST(-1, "Service Not Exist"),
-    // 调用超时, 服务不可用
-    UNAVAILABLE(-2, "Service Unavailable");
+
+    SUCCESS(1, "Call Success"), // 调用成功
+
+    FAILURE(0, "Call Failure"), // 调用失败
+
+    NOT_EXIST(-1, "Service Not Exist"), // 调用不存在
+
+    UNAVAILABLE(-2, "Service Unavailable"); // 调用超时, 服务不可用
 
     private final int status;
     private final String message;

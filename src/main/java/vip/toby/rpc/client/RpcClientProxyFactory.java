@@ -52,10 +52,11 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
         RpcClient rpcClient = this.rpcClientInterface.getAnnotation(RpcClient.class);
         String rpcName = rpcClient.value();
         RpcType rpcType = rpcClient.type();
+        int replyTimeout = rpcClient.replyTimeout();
         if (rpcType == RpcType.SYNC) {
             Queue replyQueue = replyQueue(rpcName, UUID.randomUUID().toString());
             replyBinding(rpcName, replyQueue);
-            RabbitTemplate syncSender = syncSender(rpcName, replyQueue, getConnectionFactory());
+            RabbitTemplate syncSender = syncSender(rpcName, replyQueue, replyTimeout, getConnectionFactory());
             replyMessageListenerContainer(rpcName, replyQueue, syncSender, getConnectionFactory());
             sender = syncSender;
         } else {
@@ -91,7 +92,9 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
     /**
      * 实例化 ReplyMessageListenerContainer
      */
-    private void replyMessageListenerContainer(String rpcName, Queue queue, RabbitTemplate syncSender, ConnectionFactory connectionFactory) {
+    private void replyMessageListenerContainer(
+            String rpcName, Queue queue, RabbitTemplate syncSender, ConnectionFactory connectionFactory
+    ) {
         SimpleMessageListenerContainer replyMessageListenerContainer = registerBean(RpcType.SYNC.getName() + "-ReplyMessageListenerContainer-" + rpcName, SimpleMessageListenerContainer.class, connectionFactory);
         replyMessageListenerContainer.setQueueNames(queue.getName());
         replyMessageListenerContainer.setMessageListener(syncSender);
@@ -111,7 +114,9 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
     /**
      * 实例化 SyncSender
      */
-    private RabbitTemplate syncSender(String rpcName, Queue replyQueue, ConnectionFactory connectionFactory) {
+    private RabbitTemplate syncSender(
+            String rpcName, Queue replyQueue, int replyTimeout, ConnectionFactory connectionFactory
+    ) {
         SimpleRetryPolicy simpleRetryPolicy = new SimpleRetryPolicy();
         RetryTemplate retryTemplate = new RetryTemplate();
         retryTemplate.setRetryPolicy(simpleRetryPolicy);
@@ -119,6 +124,7 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
         syncSender.setDefaultReceiveQueue(rpcName);
         syncSender.setRoutingKey(rpcName);
         syncSender.setReplyAddress(replyQueue.getName());
+        syncSender.setReplyTimeout(replyTimeout);
         syncSender.setRetryTemplate(retryTemplate);
         syncSender.setUserCorrelationId(true);
         return syncSender;

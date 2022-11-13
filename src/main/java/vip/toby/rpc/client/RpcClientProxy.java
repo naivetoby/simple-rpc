@@ -32,7 +32,13 @@ public class RpcClientProxy<T> implements InvocationHandler {
     private final RabbitTemplate sender;
     private final RpcProperties rpcProperties;
 
-    RpcClientProxy(Class<T> rpcClientInterface, String rpcName, RpcType rpcType, RabbitTemplate sender, RpcProperties rpcProperties) {
+    RpcClientProxy(
+            Class<T> rpcClientInterface,
+            String rpcName,
+            RpcType rpcType,
+            RabbitTemplate sender,
+            RpcProperties rpcProperties
+    ) {
         this.rpcClientInterface = rpcClientInterface;
         this.rpcName = rpcName;
         this.rpcType = rpcType;

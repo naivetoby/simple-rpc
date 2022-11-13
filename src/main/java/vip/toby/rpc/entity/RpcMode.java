@@ -7,10 +7,8 @@ package vip.toby.rpc.entity;
  */
 public enum RpcMode {
 
-    // 客户端
-    RPC_CLIENT(0, "客户端"),
-    // 服务端
-    RPC_SERVER(1, "服务端");
+    RPC_CLIENT(0, "客户端"), // 客户端
+    RPC_SERVER(1, "服务端"); // 服务端
 
     private final int mode;
     private final String name;

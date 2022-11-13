@@ -7,10 +7,9 @@ package vip.toby.rpc.entity;
  */
 public enum RpcType {
 
-    // 同步
-    SYNC(0, "SYNC"),
-    // 异步
-    ASYNC(1, "ASYNC");
+
+    SYNC(0, "SYNC"), // 同步
+    ASYNC(1, "ASYNC"); // 异步
 
     private final int type;
     private final String name;
