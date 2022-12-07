@@ -31,19 +31,22 @@ public class RpcClientProxy<T> implements InvocationHandler {
     private final RpcType rpcType;
     private final RabbitTemplate sender;
     private final RpcProperties rpcProperties;
+    private final int replyTimeout;
 
     RpcClientProxy(
             Class<T> rpcClientInterface,
             String rpcName,
             RpcType rpcType,
             RabbitTemplate sender,
-            RpcProperties rpcProperties
+            RpcProperties rpcProperties,
+            int replyTimeout
     ) {
         this.rpcClientInterface = rpcClientInterface;
         this.rpcName = rpcName;
         this.rpcType = rpcType;
         this.sender = sender;
         this.rpcProperties = rpcProperties;
+        this.replyTimeout = replyTimeout;
     }
 
     @Override
@@ -125,7 +128,7 @@ public class RpcClientProxy<T> implements InvocationHandler {
             JSONObject serverResultJson = JSON.parseObject(resultData.toString());
             RpcResult rpcResult = RpcResult.buildSuccess().result(ServerResult.build(OperateStatus.getOperateStatus(serverResultJson.getIntValue("status"))).message(serverResultJson.getString("message")).result(serverResultJson.get("result")).errorCode(serverResultJson.getIntValue("errorCode")));
             long offset = System.currentTimeMillis() - start;
-            if (offset > this.rpcProperties.getClientSlowCallTime()) {
+            if (offset > Math.floor(this.rpcProperties.getClientSlowCallTimePercent() * this.replyTimeout)) {
                 log.warn("Call Slowing! Duration: {}ms, {}-RpcClient-{}, Method: {}, Param: {}, RpcResult: {}", offset, this.rpcType.getName(), this.rpcName, methodName, paramData, rpcResult);
             } else {
                 log.debug("Duration: {}ms, {}-RpcClient-{}, Method: {}, Param: {}, RpcResult: {}", offset, this.rpcType.getName(), this.rpcName, methodName, paramData, rpcResult);

@@ -57,11 +57,9 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
     @Override
     public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
         Class<?> rpcServerClass = bean.getClass();
-        if (rpcServerClass.getAnnotations().length > 0) {
-            for (Annotation annotation : rpcServerClass.getAnnotations()) {
-                if (annotation instanceof RpcServer) {
-                    rpcServerStart(bean, (RpcServer) annotation);
-                }
+        for (Annotation annotation : rpcServerClass.getAnnotations()) {
+            if (annotation instanceof RpcServer) {
+                rpcServerStart(bean, (RpcServer) annotation);
             }
         }
         return bean;
@@ -79,13 +77,13 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
                     params.put("x-message-ttl", rpcServer.xMessageTTL());
                     Queue syncQueue = queue(rpcName, rpcType, params);
                     binding(rpcName, rpcType, syncQueue);
-                    RpcServerHandler syncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, getValidator(), getRpcProperties(), rpcServerBaseHandlerInterceptor);
+                    RpcServerHandler syncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, getValidator(), getRpcProperties(), rpcServer.xMessageTTL(), rpcServerBaseHandlerInterceptor);
                     messageListenerContainer(rpcName, rpcType, syncQueue, syncServerHandler, rpcServer.threadNum());
                 }
                 case ASYNC -> {
                     Queue asyncQueue = queue(rpcName, rpcType, null);
                     binding(rpcName, rpcType, asyncQueue);
-                    RpcServerHandler asyncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, getValidator(), getRpcProperties(), rpcServerBaseHandlerInterceptor);
+                    RpcServerHandler asyncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, getValidator(), getRpcProperties(), 0, rpcServerBaseHandlerInterceptor);
                     messageListenerContainer(rpcName, rpcType, asyncQueue, asyncServerHandler, rpcServer.threadNum());
                 }
                 default -> {
@@ -117,20 +115,17 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
             Object rpcServerBean,
             Validator validator,
             RpcProperties rpcProperties,
+            int xMessageTTL,
             RpcServerHandlerInterceptor rpcServerHandlerInterceptor
     ) {
-        return registerBean(this.applicationContext, rpcType.getName() + "-RpcServerHandler-" + rpcName, RpcServerHandler.class, rpcServerBean, rpcName, rpcType, validator, rpcProperties, rpcServerHandlerInterceptor);
+        return registerBean(this.applicationContext, rpcType.getName() + "-RpcServerHandler-" + rpcName, RpcServerHandler.class, rpcServerBean, rpcName, rpcType, validator, rpcProperties, xMessageTTL, rpcServerHandlerInterceptor);
     }
 
     /**
      * 实例化 SimpleMessageListenerContainer
      */
     private void messageListenerContainer(
-            String rpcName,
-            RpcType rpcType,
-            Queue queue,
-            RpcServerHandler rpcServerHandler,
-            int threadNum
+            String rpcName, RpcType rpcType, Queue queue, RpcServerHandler rpcServerHandler, int threadNum
     ) {
         SimpleMessageListenerContainer messageListenerContainer = registerBean(this.applicationContext, rpcType.getName() + "-MessageListenerContainer-" + rpcName, SimpleMessageListenerContainer.class, this.connectionFactory);
         messageListenerContainer.setQueueNames(queue.getName());
@@ -192,16 +187,11 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
      * 对象实例化并注册到Spring上下文
      */
     private <T> T registerBean(
-            ConfigurableApplicationContext applicationContext,
-            String name,
-            Class<T> clazz,
-            Object... args
+            ConfigurableApplicationContext applicationContext, String name, Class<T> clazz, Object... args
     ) {
         BeanDefinitionBuilder beanDefinitionBuilder = BeanDefinitionBuilder.genericBeanDefinition(clazz);
-        if (args.length > 0) {
-            for (Object arg : args) {
-                beanDefinitionBuilder.addConstructorArgValue(arg);
-            }
+        for (Object arg : args) {
+            beanDefinitionBuilder.addConstructorArgValue(arg);
         }
         BeanDefinition beanDefinition = beanDefinitionBuilder.getRawBeanDefinition();
         BeanDefinitionRegistry beanFactory = (BeanDefinitionRegistry) (applicationContext).getBeanFactory();

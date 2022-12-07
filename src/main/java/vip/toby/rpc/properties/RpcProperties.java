@@ -4,24 +4,28 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
-import java.util.Objects;
-
 @Configuration
 @ConfigurationProperties(prefix = "simple-rpc", ignoreInvalidFields = true)
 public class RpcProperties {
 
-    private Integer clientSlowCallTime;
+    private Double clientSlowCallTimePercent;
 
-    private Integer serverSlowCallTime;
+    private Double serverSlowCallTimePercent;
 
     private String validatorFailFast;
 
-    public int getClientSlowCallTime() {
-        return Objects.requireNonNullElse(this.clientSlowCallTime, 1000);
+    public double getClientSlowCallTimePercent() {
+        if (this.clientSlowCallTimePercent == null || this.clientSlowCallTimePercent <= 0.0 || this.clientSlowCallTimePercent >= 1.0) {
+            return 0.6;
+        }
+        return this.clientSlowCallTimePercent;
     }
 
-    public int getServerSlowCallTime() {
-        return Objects.requireNonNullElse(this.serverSlowCallTime, 1000);
+    public double getServerSlowCallTimePercent() {
+        if (this.serverSlowCallTimePercent == null || this.serverSlowCallTimePercent <= 0.0 || this.serverSlowCallTimePercent >= 1.0) {
+            return 0.6;
+        }
+        return this.serverSlowCallTimePercent;
     }
 
     public String getValidatorFailFast() {
@@ -31,12 +35,12 @@ public class RpcProperties {
         return validatorFailFast;
     }
 
-    public void setClientSlowCallTime(Integer clientSlowCallTime) {
-        this.clientSlowCallTime = clientSlowCallTime;
+    public void setClientSlowCallTimePercent(Double clientSlowCallTimePercent) {
+        this.clientSlowCallTimePercent = clientSlowCallTimePercent;
     }
 
-    public void setServerSlowCallTime(Integer serverSlowCallTime) {
-        this.serverSlowCallTime = serverSlowCallTime;
+    public void setServerSlowCallTimePercent(Double serverSlowCallTimePercent) {
+        this.serverSlowCallTimePercent = serverSlowCallTimePercent;
     }
 
     public void setValidatorFailFast(String validatorFailFast) {

@@ -52,6 +52,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
     private final RpcType rpcType;
     private final Validator validator;
     private final RpcProperties rpcProperties;
+    private final int xMessageTTL;
     private final RpcServerHandlerInterceptor rpcServerHandlerInterceptor;
 
     RpcServerHandler(
@@ -60,6 +61,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
             RpcType rpcType,
             Validator validator,
             RpcProperties rpcProperties,
+            int xMessageTTL,
             RpcServerHandlerInterceptor rpcServerHandlerInterceptor
     ) {
         this.rpcServerBean = rpcServerBean;
@@ -67,6 +69,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
         this.rpcType = rpcType;
         this.validator = validator;
         this.rpcProperties = rpcProperties;
+        this.xMessageTTL = xMessageTTL;
         this.rpcServerHandlerInterceptor = rpcServerHandlerInterceptor;
     }
 
@@ -124,19 +127,19 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
         JSONObject paramData = null;
         try {
             messageProperties = message.getMessageProperties();
-            // 组装参数json
+            // 组装参数 JSON
             paramData = JSON.parseObject(message.getBody());
-            // 构建返回JSON值
+            // 构建返回 JSON 值
             JSONObject resultJson = new JSONObject();
             try {
-                // 获得当前command
+                // 获得当前 command
                 String command = paramData.getString("command");
                 if (StringUtils.isBlank(command)) {
                     log.error("Method Invoke Exception: Command 参数为空, {}-RpcServer-{}, Received: {}", this.rpcType.getName(), this.rpcName, paramData);
                     // 此错误一般出现在调试阶段，所以没有处理返回，只打印日志
                     return;
                 }
-                // 获取data数据
+                // 获取 data 数据
                 JSONObject data = paramData.getJSONObject("data");
                 if (data == null) {
                     log.error("Method Invoke Exception: Data 参数错误, {}-RpcServer-{}, Method: {}, Received: {}", this.rpcType.getName(), this.rpcName, command, paramData);
@@ -191,7 +194,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
     }
 
     private void log(JSONObject paramData, String command, double offset) {
-        if (offset > this.rpcProperties.getServerSlowCallTime()) {
+        if (this.xMessageTTL > 0 && offset > Math.floor(this.rpcProperties.getServerSlowCallTimePercent() * this.xMessageTTL)) {
             log.info("Call Slowing! Duration: {}ms, {}-RpcServer-{}, Method: {}, Received: {}", offset, this.rpcType.getName(), this.rpcName, command, paramData);
         } else {
             log.info("Duration: {}ms, {}-RpcServer-{}, Method: {}, Received: {}", offset, this.rpcType.getName(), this.rpcName, command, paramData);
@@ -228,8 +231,8 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
             for (Annotation ann : annotations) {
                 // 先尝试获取@Validated注解
                 Validated validatedAnn = AnnotationUtils.getAnnotation(ann, Validated.class);
-                // 如果直接标注了@Validated，那么直接开启校验
-                // 如果没有，那么判断参数前是否有Valid起头的注解
+                // 如果直接标注了 @Validated，那么直接开启校验
+                // 如果没有，那么判断参数前是否有 Valid 开头的注解
                 if (validatedAnn != null || ann.annotationType().getSimpleName().startsWith("Valid")) {
                     Class<?>[] validationHints = validated(ann, validatedAnn);
                     //执行校验
