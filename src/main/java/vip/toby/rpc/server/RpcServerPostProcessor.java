@@ -1,5 +1,8 @@
 package vip.toby.rpc.server;
 
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import jakarta.validation.ValidatorFactory;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.validator.HibernateValidator;
 import org.springframework.amqp.core.AcknowledgeMode;
@@ -20,9 +23,6 @@ import vip.toby.rpc.annotation.RpcServer;
 import vip.toby.rpc.entity.RpcType;
 import vip.toby.rpc.properties.RpcProperties;
 
-import javax.validation.Validation;
-import javax.validation.Validator;
-import javax.validation.ValidatorFactory;
 import java.lang.annotation.Annotation;
 import java.util.Collections;
 import java.util.HashMap;

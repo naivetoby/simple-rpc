@@ -4,6 +4,9 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 import com.rabbitmq.client.AMQP.BasicProperties;
 import com.rabbitmq.client.Channel;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validator;
+import jakarta.validation.groups.Default;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.amqp.core.Message;
@@ -21,9 +24,6 @@ import vip.toby.rpc.entity.ServerResult;
 import vip.toby.rpc.entity.ServerStatus;
 import vip.toby.rpc.properties.RpcProperties;
 
-import javax.validation.ConstraintViolation;
-import javax.validation.Validator;
-import javax.validation.groups.Default;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
@@ -174,6 +174,10 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
             } catch (Exception e) {
                 log.error("Method Invoke Exception! Received: {}", paramData);
                 log.error(e.getMessage(), e);
+            }
+            // 异步执行任务
+            if (RpcType.ASYNC == this.rpcType) {
+                return;
             }
             // 状态设置
             resultJson.put("status", serverStatus.getStatus());
