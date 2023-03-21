@@ -8,7 +8,7 @@ package vip.toby.rpc.entity;
 public enum ErrorCode {
 
     PARAMS_NOT_VALID(400, "Params Not Valid"), // 请求参数不正确
-    AUTHORIZED_FAILED(401, "Authorized Failed"), // 登录已超时，请重新登录
+    AUTHORIZED_FAILED(401, "Authorized Failed"), // 登录已过期，请重新登录
     FORBIDDEN(403, "Forbidden"), // 禁止访问
     NOT_FOUND(404, "Not Found"), // 找不到
     METHOD_NOT_ALLOWED(405, "Method Not Allowed"), // 请求方法不对
