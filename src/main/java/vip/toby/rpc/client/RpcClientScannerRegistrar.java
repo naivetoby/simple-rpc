@@ -40,17 +40,13 @@ public class RpcClientScannerRegistrar implements BeanFactoryAware, ImportBeanDe
 
         log.debug("Searching for rpc-client annotated with @RpcClient");
 
-        List<String> packages = AutoConfigurationPackages.get(this.beanFactory);
+        final List<String> packages = AutoConfigurationPackages.get(this.beanFactory);
         if (log.isDebugEnabled()) {
             packages.forEach(pkg -> log.debug("Using auto-configuration base package '{}'", pkg));
         }
-        // 自动扫描当前项目 RPC-Client
-        BeanDefinitionBuilder scannerConfigurerBuilder = BeanDefinitionBuilder.genericBeanDefinition(RpcClientScannerConfigurer.class);
+        final BeanDefinitionBuilder scannerConfigurerBuilder = BeanDefinitionBuilder.genericBeanDefinition(RpcClientScannerConfigurer.class);
         scannerConfigurerBuilder.addPropertyValue("basePackage", StringUtils.collectionToCommaDelimitedString(packages));
         registry.registerBeanDefinition(RpcClientScannerConfigurer.class.getName(), scannerConfigurerBuilder.getBeanDefinition());
-        // 自动配置指定 RPC-Client
-        BeanDefinitionBuilder builder = BeanDefinitionBuilder.genericBeanDefinition(RpcClientConfigurationSupport.class);
-        registry.registerBeanDefinition(RpcClientConfigurationSupport.class.getName(), builder.getBeanDefinition());
     }
 
 }

@@ -17,6 +17,6 @@ import java.lang.annotation.*;
 @Import(RpcDeferredImportSelector.class)
 public @interface EnableSimpleRpc {
 
-    RpcMode[] mode() default {RpcMode.RPC_CLIENT, RpcMode.RPC_SERVER};
+    RpcMode[] mode() default {RpcMode.RPC_CLIENT_AUTO_SCANNER, RpcMode.RPC_SERVER_AUTO_SCANNER, RpcMode.RPC_CLIENT_CONFIGURER};
 
 }
