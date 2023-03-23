@@ -1,5 +1,7 @@
 package vip.toby.rpc.entity;
 
+import lombok.Getter;
+
 /**
  * RpcMode
  *
@@ -7,35 +9,13 @@ package vip.toby.rpc.entity;
  */
 public enum RpcMode {
 
-    RPC_CLIENT(0, "客户端"), // 客户端
-    RPC_SERVER(1, "服务端"); // 服务端
+    RPC_CLIENT_AUTO_SCANNER(0), RPC_SERVER_AUTO_SCANNER(1), RPC_CLIENT_CONFIGURER(3);
 
+    @Getter
     private final int mode;
-    private final String name;
 
-    RpcMode(int mode, String name) {
+    RpcMode(int mode) {
         this.mode = mode;
-        this.name = name;
-    }
-
-    public int getMode() {
-        return mode;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public static RpcMode getRpcMode(Integer mode) {
-        if (mode == null) {
-            return RPC_SERVER;
-        }
-        for (RpcMode e : RpcMode.values()) {
-            if (e.mode == mode) {
-                return e;
-            }
-        }
-        return RPC_SERVER;
     }
 
 }
