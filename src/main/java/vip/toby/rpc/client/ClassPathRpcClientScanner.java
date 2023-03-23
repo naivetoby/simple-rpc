@@ -51,7 +51,7 @@ public class ClassPathRpcClientScanner extends ClassPathBeanDefinitionScanner {
             rpcClientBeanDefinition = (GenericBeanDefinition) holder.getBeanDefinition();
             String beanClassName = rpcClientBeanDefinition.getBeanClassName();
             if (beanClassName != null) {
-                // 获取真实接口class，并作为构造方法的参数
+                // 获取真实接口 class，并作为构造方法的参数
                 rpcClientBeanDefinition.getConstructorArgumentValues().addGenericArgumentValue(beanClassName);
                 // 修改类为 RpcClientProxyFactory
                 rpcClientBeanDefinition.setBeanClass(RpcClientProxyFactory.class);
