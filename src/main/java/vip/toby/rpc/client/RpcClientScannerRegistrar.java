@@ -10,6 +10,7 @@ import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
 import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.util.StringUtils;
 
+import javax.annotation.Nonnull;
 import java.util.List;
 
 /**
@@ -23,7 +24,14 @@ public class RpcClientScannerRegistrar implements BeanFactoryAware, ImportBeanDe
     private BeanFactory beanFactory;
 
     @Override
-    public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry) {
+    public void setBeanFactory(@Nonnull BeanFactory beanFactory) {
+        this.beanFactory = beanFactory;
+    }
+
+    @Override
+    public void registerBeanDefinitions(
+            @Nonnull AnnotationMetadata importingClassMetadata, @Nonnull BeanDefinitionRegistry registry
+    ) {
 
         if (!AutoConfigurationPackages.has(this.beanFactory)) {
             log.debug("Could not determine auto-configuration package, automatic rpc-client scanning disabled.");
@@ -36,15 +44,13 @@ public class RpcClientScannerRegistrar implements BeanFactoryAware, ImportBeanDe
         if (log.isDebugEnabled()) {
             packages.forEach(pkg -> log.debug("Using auto-configuration base package '{}'", pkg));
         }
-
-        BeanDefinitionBuilder builder = BeanDefinitionBuilder.genericBeanDefinition(RpcClientScannerConfigurer.class);
-        builder.addPropertyValue("basePackage", StringUtils.collectionToCommaDelimitedString(packages));
-        registry.registerBeanDefinition(RpcClientScannerConfigurer.class.getName(), builder.getBeanDefinition());
-    }
-
-    @Override
-    public void setBeanFactory(BeanFactory beanFactory) {
-        this.beanFactory = beanFactory;
+        // 自动扫描当前项目 RPC-Client
+        BeanDefinitionBuilder scannerConfigurerBuilder = BeanDefinitionBuilder.genericBeanDefinition(RpcClientScannerConfigurer.class);
+        scannerConfigurerBuilder.addPropertyValue("basePackage", StringUtils.collectionToCommaDelimitedString(packages));
+        registry.registerBeanDefinition(RpcClientScannerConfigurer.class.getName(), scannerConfigurerBuilder.getBeanDefinition());
+        // 自动配置指定 RPC-Client
+        BeanDefinitionBuilder builder = BeanDefinitionBuilder.genericBeanDefinition(RpcClientConfigurationSupport.class);
+        registry.registerBeanDefinition(RpcClientConfigurationSupport.class.getName(), builder.getBeanDefinition());
     }
 
 }

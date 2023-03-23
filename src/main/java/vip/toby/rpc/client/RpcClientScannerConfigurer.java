@@ -9,6 +9,8 @@ import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.util.StringUtils;
 
+import javax.annotation.Nonnull;
+
 /**
  * RpcClientScannerConfigurer
  *
@@ -20,7 +22,7 @@ public class RpcClientScannerConfigurer implements BeanDefinitionRegistryPostPro
     private ApplicationContext applicationContext;
 
     @Override
-    public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+    public void setApplicationContext(@Nonnull ApplicationContext applicationContext) throws BeansException {
         this.applicationContext = applicationContext;
     }
 
@@ -29,7 +31,7 @@ public class RpcClientScannerConfigurer implements BeanDefinitionRegistryPostPro
     }
 
     @Override
-    public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) throws BeansException {
+    public void postProcessBeanDefinitionRegistry(@Nonnull BeanDefinitionRegistry registry) throws BeansException {
         ClassPathRpcClientScanner scanner = new ClassPathRpcClientScanner(registry);
         scanner.setResourceLoader(this.applicationContext);
         scanner.registerFilters();
@@ -37,7 +39,7 @@ public class RpcClientScannerConfigurer implements BeanDefinitionRegistryPostPro
     }
 
     @Override
-    public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) throws BeansException {
+    public void postProcessBeanFactory(@Nonnull ConfigurableListableBeanFactory beanFactory) throws BeansException {
 
     }
 

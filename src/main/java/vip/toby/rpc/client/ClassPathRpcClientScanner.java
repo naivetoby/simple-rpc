@@ -10,6 +10,7 @@ import org.springframework.context.annotation.ClassPathBeanDefinitionScanner;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
 import vip.toby.rpc.annotation.RpcClient;
 
+import javax.annotation.Nonnull;
 import java.util.Arrays;
 import java.util.Set;
 
@@ -35,7 +36,8 @@ public class ClassPathRpcClientScanner extends ClassPathBeanDefinitionScanner {
     }
 
     @Override
-    public Set<BeanDefinitionHolder> doScan(String... basePackages) {
+    @Nonnull
+    public Set<BeanDefinitionHolder> doScan(@Nonnull String... basePackages) {
         Set<BeanDefinitionHolder> beanDefinitions = super.doScan(basePackages);
         if (beanDefinitions.isEmpty()) {
             log.debug("No @RpcClient was found in '{}' package. Please check your configuration.", Arrays.toString(basePackages));
