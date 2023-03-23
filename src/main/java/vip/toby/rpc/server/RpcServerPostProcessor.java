@@ -144,7 +144,10 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
      */
     private Validator getValidator() {
         if (this.validator == null) {
-            final ValidatorFactory validatorFactory = Validation.byProvider(HibernateValidator.class).configure().failFast(getRpcProperties().getValidatorFailFast().equals("true")).buildValidatorFactory();
+            final ValidatorFactory validatorFactory = Validation.byProvider(HibernateValidator.class)
+                    .configure()
+                    .failFast(getRpcProperties().getValidatorFailFast().equals("true"))
+                    .buildValidatorFactory();
             this.validator = validatorFactory.getValidator();
         }
         return this.validator;

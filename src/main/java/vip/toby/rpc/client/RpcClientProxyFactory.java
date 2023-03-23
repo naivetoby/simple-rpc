@@ -170,7 +170,7 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
     }
 
     /**
-     * 对象实例化并注册到Spring上下文
+     * 对象实例化并注册到 Spring 上下文
      */
     private <L> L registerBean(String name, Class<L> clazz, Object... args) {
         BeanDefinitionBuilder beanDefinitionBuilder = BeanDefinitionBuilder.genericBeanDefinition(clazz);

@@ -104,7 +104,8 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                     Class<?> parameterType = parameterTypes[0];
                     if (parameterType.getAnnotation(RpcDTO.class) != null) {
                         // FIXME 预热 FastJSON2 解析 和 Validator
-                        validator.validate(JSON.to(parameterType, parameterType.getDeclaredConstructor().newInstance()), Default.class);
+                        validator.validate(JSON.to(parameterType, parameterType.getDeclaredConstructor()
+                                .newInstance()), Default.class);
                     } else {
                         if (parameterType != JSONObject.class) {
                             throw new RuntimeException("参数类型只能为 JSONObject 或者添加 @RpcDTO 注解, Class: " + rpcServerClass.getName() + ", Method: " + fastMethod.getName());
@@ -183,9 +184,14 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
             resultJson.put("status", serverStatus.getStatus());
             resultJson.put("message", serverStatus.getMessage());
             // 构建配置
-            BasicProperties replyProps = new BasicProperties.Builder().correlationId(messageProperties.getCorrelationId()).contentEncoding(StandardCharsets.UTF_8.name()).contentType(messageProperties.getContentType()).build();
+            BasicProperties replyProps = new BasicProperties.Builder().correlationId(messageProperties.getCorrelationId())
+                    .contentEncoding(StandardCharsets.UTF_8.name())
+                    .contentType(messageProperties.getContentType())
+                    .build();
             // 反馈消息
-            channel.basicPublish(messageProperties.getReplyToAddress().getExchangeName(), messageProperties.getReplyToAddress().getRoutingKey(), replyProps, JSON.toJSONBytes(resultJson));
+            channel.basicPublish(messageProperties.getReplyToAddress()
+                    .getExchangeName(), messageProperties.getReplyToAddress()
+                    .getRoutingKey(), replyProps, JSON.toJSONBytes(resultJson));
         } catch (Exception e) {
             log.error("{}-RpcServer-{} Exception! Received: {}", this.rpcType.getName(), this.rpcName, paramData);
             log.error(e.getMessage(), e);

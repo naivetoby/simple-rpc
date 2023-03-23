@@ -1,5 +1,6 @@
 package vip.toby.rpc.client;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.support.*;
@@ -8,13 +9,12 @@ import org.springframework.context.ApplicationContextAware;
 import vip.toby.rpc.annotation.RpcClient;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import java.lang.annotation.Annotation;
+import java.util.Arrays;
 import java.util.List;
 
+@Slf4j
 public class RpcClientConfigurationSupport implements BeanDefinitionRegistryPostProcessor, ApplicationContextAware {
 
-    @Nullable
     private RpcClientConfigurer rpcClientConfigurer;
     private ApplicationContext applicationContext;
 
@@ -25,19 +25,24 @@ public class RpcClientConfigurationSupport implements BeanDefinitionRegistryPost
 
     @Override
     public void postProcessBeanDefinitionRegistry(@Nonnull BeanDefinitionRegistry registry) throws BeansException {
-        if (this.rpcClientConfigurer != null) {
-            // 添加注册
-            final RpcClientRegistry rpcClientRegistry = new RpcClientRegistry();
-            this.rpcClientConfigurer.addRpcClientRegistry(rpcClientRegistry);
-            final List<Class<?>> rpcClientRegistrations = rpcClientRegistry.getRegistrations();
-            for (Class<?> clazz : rpcClientRegistrations) {
-                for (Annotation annotation : clazz.getAnnotations()) {
-                    if (annotation instanceof RpcClient) {
-                        processBeanDefinitions(clazz);
-                        break;
-                    }
-                }
-            }
+        if (this.getRpcClientConfigurer() == null) {
+            log.debug("No @RpcClient was found in RpcClientConfigurer. Please check your configuration.");
+            return;
+        }
+        // 添加注册
+        final RpcClientRegistry rpcClientRegistry = new RpcClientRegistry();
+        this.rpcClientConfigurer.addRpcClientRegistry(rpcClientRegistry);
+        final List<Class<?>> rpcClientRegistrations = rpcClientRegistry.getRegistrations()
+                .stream()
+                .filter(rpcClientRegistration -> Arrays.stream(rpcClientRegistration.getAnnotations())
+                        .anyMatch(annotation -> annotation instanceof RpcClient))
+                .toList();
+        if (rpcClientRegistrations.isEmpty()) {
+            log.debug("No @RpcClient was found in RpcClientConfigurer. Please check your configuration.");
+            return;
+        }
+        for (Class<?> clazz : rpcClientRegistrations) {
+            processBeanDefinitions(clazz);
         }
     }
 
@@ -46,13 +51,17 @@ public class RpcClientConfigurationSupport implements BeanDefinitionRegistryPost
         final GenericBeanDefinition rpcClientBeanDefinition = (GenericBeanDefinition) beanDefinitionBuilder.getRawBeanDefinition();
         final String beanClassName = rpcClientBeanDefinition.getBeanClassName();
         if (beanClassName != null) {
-            if (!applicationContext.containsBeanDefinition(beanClassName)) {
+            final BeanDefinitionRegistry beanDefinitionRegistry = (BeanDefinitionRegistry) this.applicationContext;
+            // FIXME 有可能已经注册成功, 如配置的 RPC-Client 已经在本项目中
+            if (!beanDefinitionRegistry.containsBeanDefinition(beanClassName)) {
                 // 获取真实接口 Class, 并作为构造方法的参数
                 rpcClientBeanDefinition.getConstructorArgumentValues().addGenericArgumentValue(beanClassName);
                 // 修改类为 RpcClientProxyFactory
                 rpcClientBeanDefinition.setBeanClass(RpcClientProxyFactory.class);
                 // 采用按照类型注入的方式
                 rpcClientBeanDefinition.setAutowireMode(AbstractBeanDefinition.AUTOWIRE_BY_TYPE);
+                beanDefinitionRegistry.registerBeanDefinition(beanClassName, rpcClientBeanDefinition);
+                log.debug("@RpcClient was found, beanClassName: {}", beanClassName);
             }
         }
     }
@@ -60,6 +69,20 @@ public class RpcClientConfigurationSupport implements BeanDefinitionRegistryPost
     @Override
     public void postProcessBeanFactory(@Nonnull ConfigurableListableBeanFactory beanFactory) throws BeansException {
 
+    }
+
+    /**
+     * 实例化 RpcClientConfigurer
+     */
+    private RpcClientConfigurer getRpcClientConfigurer() {
+        if (this.rpcClientConfigurer == null) {
+            try {
+                // FIXME 未实现 RpcClientConfigurer 接口
+                this.rpcClientConfigurer = this.applicationContext.getBean(RpcClientConfigurer.class);
+            } catch (BeansException ignored) {
+            }
+        }
+        return this.rpcClientConfigurer;
     }
 
 }

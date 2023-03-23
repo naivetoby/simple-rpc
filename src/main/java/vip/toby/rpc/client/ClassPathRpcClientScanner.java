@@ -59,6 +59,7 @@ public class ClassPathRpcClientScanner extends ClassPathBeanDefinitionScanner {
                 rpcClientBeanDefinition.setBeanClass(RpcClientProxyFactory.class);
                 // 采用按照类型注入的方式
                 rpcClientBeanDefinition.setAutowireMode(AbstractBeanDefinition.AUTOWIRE_BY_TYPE);
+                log.debug("@RpcClient was found, beanClassName: {}", beanClassName);
             }
         }
     }
