@@ -19,6 +19,7 @@ import vip.toby.rpc.annotation.RpcClient;
 import vip.toby.rpc.entity.RpcType;
 import vip.toby.rpc.properties.RpcProperties;
 
+import javax.annotation.Nonnull;
 import java.lang.reflect.Proxy;
 import java.util.Collections;
 import java.util.UUID;
@@ -41,7 +42,7 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
     }
 
     @Override
-    public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
+    public void setBeanFactory(@Nonnull BeanFactory beanFactory) throws BeansException {
         this.beanFactory = beanFactory;
     }
 
@@ -169,11 +170,11 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
     }
 
     /**
-     * 对象实例化并注册到Spring上下文
+     * 对象实例化并注册到 Spring 上下文
      */
     private <L> L registerBean(String name, Class<L> clazz, Object... args) {
         BeanDefinitionBuilder beanDefinitionBuilder = BeanDefinitionBuilder.genericBeanDefinition(clazz);
-        if (args != null && args.length > 0) {
+        if (args != null) {
             for (Object arg : args) {
                 beanDefinitionBuilder.addConstructorArgValue(arg);
             }

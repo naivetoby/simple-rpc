@@ -104,7 +104,8 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                     Class<?> parameterType = parameterTypes[0];
                     if (parameterType.getAnnotation(RpcDTO.class) != null) {
                         // FIXME 预热 FastJSON2 解析 和 Validator
-                        validator.validate(JSON.parseObject(JSON.toJSONString(parameterType.getDeclaredConstructor().newInstance()), parameterType), Default.class);
+                        validator.validate(JSON.to(parameterType, parameterType.getDeclaredConstructor()
+                                .newInstance()), Default.class);
                     } else {
                         if (parameterType != JSONObject.class) {
                             throw new RuntimeException("参数类型只能为 JSONObject 或者添加 @RpcDTO 注解, Class: " + rpcServerClass.getName() + ", Method: " + fastMethod.getName());
@@ -183,9 +184,14 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
             resultJson.put("status", serverStatus.getStatus());
             resultJson.put("message", serverStatus.getMessage());
             // 构建配置
-            BasicProperties replyProps = new BasicProperties.Builder().correlationId(messageProperties.getCorrelationId()).contentEncoding(StandardCharsets.UTF_8.name()).contentType(messageProperties.getContentType()).build();
+            BasicProperties replyProps = new BasicProperties.Builder().correlationId(messageProperties.getCorrelationId())
+                    .contentEncoding(StandardCharsets.UTF_8.name())
+                    .contentType(messageProperties.getContentType())
+                    .build();
             // 反馈消息
-            channel.basicPublish(messageProperties.getReplyToAddress().getExchangeName(), messageProperties.getReplyToAddress().getRoutingKey(), replyProps, JSON.toJSONBytes(resultJson));
+            channel.basicPublish(messageProperties.getReplyToAddress()
+                    .getExchangeName(), messageProperties.getReplyToAddress()
+                    .getRoutingKey(), replyProps, JSON.toJSONBytes(resultJson));
         } catch (Exception e) {
             log.error("{}-RpcServer-{} Exception! Received: {}", this.rpcType.getName(), this.rpcName, paramData);
             log.error(e.getMessage(), e);
@@ -229,17 +235,17 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
         Class<?> parameterType = FAST_METHOD_PARAMETER_TYPE_MAP.get(key);
         // JavaBean 参数
         if (parameterType != JSONObject.class) {
-            data = ((JSONObject) data).to(parameterType);
+            data = JSON.to(parameterType, data);
             // JavaBean 参数是否需要校验
             Annotation[] annotations = fastMethod.getJavaMethod().getParameters()[0].getAnnotations();
             for (Annotation ann : annotations) {
-                // 先尝试获取@Validated注解
+                // 先尝试获取 @Validated 注解
                 Validated validatedAnn = AnnotationUtils.getAnnotation(ann, Validated.class);
                 // 如果直接标注了 @Validated，那么直接开启校验
                 // 如果没有，那么判断参数前是否有 Valid 开头的注解
                 if (validatedAnn != null || ann.annotationType().getSimpleName().startsWith("Valid")) {
                     Class<?>[] validationHints = validated(ann, validatedAnn);
-                    //执行校验
+                    // 执行校验
                     Set<ConstraintViolation<Object>> constraintViolations = validator.validate(validationHints);
                     if (!constraintViolations.isEmpty()) {
                         // 校验不合格处理
@@ -280,7 +286,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
         Class<?> parameterType = FAST_METHOD_PARAMETER_TYPE_MAP.get(key);
         // JavaBean 参数
         if (parameterType != JSONObject.class) {
-            data = ((JSONObject) data).to(parameterType);
+            data = JSON.to(parameterType, data);
             // JavaBean 参数是否需要校验
             Annotation[] annotations = fastMethod.getJavaMethod().getParameters()[0].getAnnotations();
             for (Annotation ann : annotations) {

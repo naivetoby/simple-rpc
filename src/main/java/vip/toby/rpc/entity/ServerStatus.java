@@ -9,7 +9,6 @@ import com.alibaba.fastjson2.JSONObject;
  */
 public enum ServerStatus {
 
-
     SUCCESS(1, "Call Success"), // 调用成功
 
     FAILURE(0, "Call Failure"), // 调用失败

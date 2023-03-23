@@ -8,6 +8,7 @@ import vip.toby.rpc.client.RpcClientScannerRegistrar;
 import vip.toby.rpc.entity.RpcMode;
 import vip.toby.rpc.server.RpcServerPostProcessor;
 
+import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +22,7 @@ import java.util.Map;
 public class RpcDeferredImportSelector implements DeferredImportSelector {
 
     @Override
+    @Nonnull
     public String[] selectImports(AnnotationMetadata importingClassMetadata) {
         List<String> definitionRegistrars = new ArrayList<>();
         Map<String, Object> annotationAttributes = importingClassMetadata.getAnnotationAttributes(EnableSimpleRpc.class.getCanonicalName());
