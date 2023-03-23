@@ -53,17 +53,14 @@ public class RpcClientConfigurationSupport implements BeanDefinitionRegistryPost
         final String beanClassName = rpcClientBeanDefinition.getBeanClassName();
         if (beanClassName != null) {
             final BeanDefinitionRegistry beanDefinitionRegistry = (BeanDefinitionRegistry) this.applicationContext;
-            // FIXME 有可能已经注册成功, 如配置的 RPC-Client 已经在本项目中
-            if (!beanDefinitionRegistry.containsBeanDefinition(beanClassName)) {
-                // 获取真实接口 Class, 并作为构造方法的参数
-                rpcClientBeanDefinition.getConstructorArgumentValues().addGenericArgumentValue(beanClassName);
-                // 修改类为 RpcClientProxyFactory
-                rpcClientBeanDefinition.setBeanClass(RpcClientProxyFactory.class);
-                // 采用按照类型注入的方式
-                rpcClientBeanDefinition.setAutowireMode(AbstractBeanDefinition.AUTOWIRE_BY_TYPE);
-                beanDefinitionRegistry.registerBeanDefinition(beanClassName, rpcClientBeanDefinition);
-                log.debug("@RpcClient was found at {}", beanClassName);
-            }
+            // 获取真实接口 Class, 并作为构造方法的参数
+            rpcClientBeanDefinition.getConstructorArgumentValues().addGenericArgumentValue(beanClassName);
+            // 修改类为 RpcClientProxyFactory
+            rpcClientBeanDefinition.setBeanClass(RpcClientProxyFactory.class);
+            // 采用按照类型注入的方式
+            rpcClientBeanDefinition.setAutowireMode(AbstractBeanDefinition.AUTOWIRE_BY_TYPE);
+            beanDefinitionRegistry.registerBeanDefinition(beanClassName, rpcClientBeanDefinition);
+            log.debug("@RpcClient was found at {}", beanClassName);
         }
     }
 
