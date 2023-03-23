@@ -26,9 +26,10 @@ public class RpcClientConfigurationSupport implements BeanDefinitionRegistryPost
     @Override
     public void postProcessBeanDefinitionRegistry(@Nonnull BeanDefinitionRegistry registry) throws BeansException {
         if (this.getRpcClientConfigurer() == null) {
-            log.debug("No @RpcClient was found in RpcClientConfigurer. Please check your configuration.");
+            log.debug("No config implements RpcClientConfigurer. Please check your configuration.");
             return;
         }
+        log.debug("Searching for rpc-client annotated with @RpcClient by RpcClientConfigurer.");
         // 添加注册
         final RpcClientRegistry rpcClientRegistry = new RpcClientRegistry();
         this.rpcClientConfigurer.addRpcClientRegistry(rpcClientRegistry);
@@ -38,7 +39,7 @@ public class RpcClientConfigurationSupport implements BeanDefinitionRegistryPost
                         .anyMatch(annotation -> annotation instanceof RpcClient))
                 .toList();
         if (rpcClientRegistrations.isEmpty()) {
-            log.debug("No @RpcClient was found in RpcClientConfigurer. Please check your configuration.");
+            log.debug("No @RpcClient was found by RpcClientConfigurer. Please check your configuration.");
             return;
         }
         for (Class<?> clazz : rpcClientRegistrations) {
@@ -61,7 +62,7 @@ public class RpcClientConfigurationSupport implements BeanDefinitionRegistryPost
                 // 采用按照类型注入的方式
                 rpcClientBeanDefinition.setAutowireMode(AbstractBeanDefinition.AUTOWIRE_BY_TYPE);
                 beanDefinitionRegistry.registerBeanDefinition(beanClassName, rpcClientBeanDefinition);
-                log.debug("@RpcClient was found, beanClassName: {}", beanClassName);
+                log.debug("@RpcClient was found at {}", beanClassName);
             }
         }
     }
