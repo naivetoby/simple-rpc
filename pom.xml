@@ -12,7 +12,7 @@
 
     <groupId>vip.toby.rpc</groupId>
     <artifactId>simple-rpc</artifactId>
-    <version>2.0.3</version>
+    <version>2.0.4</version>
     <packaging>jar</packaging>
 
     <name>simple-rpc</name>
@@ -52,7 +52,7 @@
                 </exclusion>
                 <exclusion>
                     <groupId>org.springframework</groupId>
-                    <artifactId>spring-context</artifactId>
+                    <artifactId>spring-expression</artifactId>
                 </exclusion>
             </exclusions>
             <scope>compile</scope>
@@ -67,7 +67,7 @@
                 </exclusion>
                 <exclusion>
                     <groupId>org.springframework</groupId>
-                    <artifactId>spring-context</artifactId>
+                    <artifactId>spring-expression</artifactId>
                 </exclusion>
             </exclusions>
             <scope>compile</scope>
@@ -80,8 +80,8 @@
         </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
-            <artifactId>spring-context</artifactId>
-            <version>6.0.6</version>
+            <artifactId>spring-expression</artifactId>
+            <version>6.0.7</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
