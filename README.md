@@ -157,6 +157,6 @@ spring:
 
 ## 许可证
 
-[![license](https://img.shields.io/github/license/naivetoby/smrpc.svg?style=flat-square)](https://github.com/naivetoby/smrpc/blob/master/LICENSE)
+[![license](https://img.shields.io/github/license/naivetoby/smrpc.svg?style=flat-square)](https://github.com/naivetoby/simple-rpc/blob/main/LICENSE)
 
 使用 Apache License - Version 2.0 协议开源。
