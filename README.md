@@ -139,7 +139,7 @@ public class Application {
 ```
 
 ## Demo 源码
-https://github.com/thinktkj/simple-rpc-demo
+https://github.com/naivetoby/simple-rpc-demo
 
 ## 目前适配 JDK 17 版本
 启动时，需要添加启动参数 vm: --add-opens java.base/java.lang=ALL-UNNAMED
@@ -157,6 +157,6 @@ spring:
 
 ## 许可证
 
-[![license](https://img.shields.io/github/license/thinktkj/smrpc.svg?style=flat-square)](https://github.com/thinktkj/smrpc/blob/master/LICENSE)
+[![license](https://img.shields.io/github/license/naivetoby/smrpc.svg?style=flat-square)](https://github.com/thinktkj/smrpc/blob/master/LICENSE)
 
 使用 Apache License - Version 2.0 协议开源。

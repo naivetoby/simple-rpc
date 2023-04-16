@@ -16,7 +16,7 @@
     <packaging>jar</packaging>
 
     <name>simple-rpc</name>
-    <url>https://github.com/thinktkj/simple-rpc</url>
+    <url>https://github.com/naivetoby/simple-rpc</url>
     <description>Simple-rpc is a very lightweight RPC call framework based on RabbitMQ message queues, developed using
         Spring-Boot.
     </description>
@@ -28,9 +28,9 @@
     </properties>
 
     <scm>
-        <url>https://github.com/thinktkj/simple-rpc</url>
-        <connection>scm:git:https://github.com/thinktkj/simple-rpc.git</connection>
-        <developerConnection>scm:git:https://github.com/thinktkj/simple-rpc.git</developerConnection>
+        <url>https://github.com/naivetoby/simple-rpc</url>
+        <connection>scm:git:https://github.com/naivetoby/simple-rpc.git</connection>
+        <developerConnection>scm:git:https://github.com/naivetoby/simple-rpc.git</developerConnection>
     </scm>
 
     <developers>
