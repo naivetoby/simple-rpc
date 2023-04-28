@@ -148,11 +148,15 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                     return;
                 }
                 // 异步执行任务
-                if (RpcType.ASYNC == this.rpcType || RpcType.DELAY == this.rpcType) {
+                if (this.rpcType == RpcType.ASYNC || this.rpcType == RpcType.DELAY) {
                     long start = System.currentTimeMillis();
                     asyncExecute(command, data, messageProperties.getCorrelationId());
                     double offset = System.currentTimeMillis() - start;
                     log(paramData, command, offset);
+                    // FIXME 延迟消息, 处理成功才 Ack
+                    if (this.rpcType == RpcType.DELAY) {
+                        channel.basicAck(messageProperties.getDeliveryTag(), false);
+                    }
                     return;
                 }
                 // 同步执行任务并返回结果
@@ -196,9 +200,11 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
             log.error("{}-RpcServer-{} Exception! Received: {}", this.rpcType.getName(), this.rpcName, paramData);
             log.error(e.getMessage(), e);
         } finally {
-            // 确认处理任务
-            if (messageProperties != null) {
-                channel.basicAck(messageProperties.getDeliveryTag(), false);
+            // FIXME 同步和异步消息, 强制 Ack
+            if (this.rpcType == RpcType.SYNC || this.rpcType == RpcType.ASYNC) {
+                if (messageProperties != null) {
+                    channel.basicAck(messageProperties.getDeliveryTag(), false);
+                }
             }
         }
     }

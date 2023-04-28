@@ -16,6 +16,7 @@ import vip.toby.rpc.properties.RpcProperties;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.Type;
 import java.util.UUID;
 
 /**
@@ -81,9 +82,13 @@ public class RpcClientProxy<T> implements InvocationHandler {
         Parameter[] parameters = method.getParameters();
         if (this.rpcType == RpcType.DELAY) {
             if (parameters.length != 1) {
-                throw new RuntimeException("DELAY-RpcClient 只能含一个参数, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
+                throw new RuntimeException("DELAY-RpcClient 只能包含唯一参数, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
             }
-            if (!(parameters[0].getParameterizedType() instanceof RpcDelayDTO)) {
+            final Type type = parameters[0].getParameterizedType();
+            if (!(type instanceof Class<?> clazz)) {
+                throw new RuntimeException("DELAY-RpcClient 参数必须继承 RpcDelayDTO, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
+            }
+            if (!(RpcDelayDTO.class.isAssignableFrom(clazz))) {
                 throw new RuntimeException("DELAY-RpcClient 参数必须继承 RpcDelayDTO, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
             }
         }
@@ -116,14 +121,19 @@ public class RpcClientProxy<T> implements InvocationHandler {
         // CorrelationData
         CorrelationData correlationData = new CorrelationData(UUID.randomUUID().toString());
         try {
-            if (this.rpcType == RpcType.ASYNC || this.rpcType == RpcType.DELAY) {
-                this.sender.send(this.sender.getRoutingKey(), message, correlationData);
+            if (this.rpcType == RpcType.ASYNC) {
+                this.sender.send("simple.rpc.async", this.sender.getRoutingKey(), message, correlationData);
+                log.debug("{}-RpcClient-{}, Method: {}, Param: {}", this.rpcType.getName(), this.rpcName, methodName, paramData);
+                return null;
+            }
+            if (this.rpcType == RpcType.DELAY) {
+                this.sender.send("simple.rpc.delay", this.sender.getRoutingKey(), message, correlationData);
                 log.debug("{}-RpcClient-{}, Method: {}, Param: {}", this.rpcType.getName(), this.rpcName, methodName, paramData);
                 return null;
             }
             // 发起请求并返回结果
             long start = System.currentTimeMillis();
-            Message resultObj = this.sender.sendAndReceive(message, correlationData);
+            Message resultObj = this.sender.sendAndReceive("simple.rpc.sync", this.sender.getRoutingKey(), message, correlationData);
             if (resultObj == null) {
                 // 无返回任何结果，说明服务器负载过高，没有及时处理请求，导致超时
                 log.error("Service Unavailable! Duration: {}ms, {}-RpcClient-{}, Method: {}, Param: {}", System.currentTimeMillis() - start, this.rpcType.getName(), this.rpcName, methodName, paramData);
