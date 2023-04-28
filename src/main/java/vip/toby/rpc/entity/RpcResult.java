@@ -52,7 +52,7 @@ public class RpcResult {
 
     @Override
     public String toString() {
-        JSONObject result = new JSONObject();
+        final JSONObject result = new JSONObject();
         result.put("serverStatus", this.serverStatus.toJSON());
         if (this.serverResult != null) {
             result.put("serverResult", this.serverResult.toJSON());

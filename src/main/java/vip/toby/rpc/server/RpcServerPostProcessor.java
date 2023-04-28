@@ -59,7 +59,7 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
 
     @Override
     public Object postProcessAfterInitialization(@Nonnull Object bean, @Nonnull String beanName) throws BeansException {
-        Class<?> rpcServerClass = bean.getClass();
+        final Class<?> rpcServerClass = bean.getClass();
         for (Annotation annotation : rpcServerClass.getAnnotations()) {
             if (annotation instanceof RpcServer) {
                 rpcServerStart(bean, (RpcServer) annotation);
@@ -72,21 +72,21 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
      * 启动服务监听
      */
     private void rpcServerStart(Object rpcServerBean, RpcServer rpcServer) {
-        String rpcName = rpcServer.value();
+        final String rpcName = rpcServer.value();
         for (RpcType rpcType : rpcServer.type()) {
             switch (rpcType) {
                 case SYNC -> {
-                    Map<String, Object> params = new HashMap<>(1);
+                    final Map<String, Object> params = new HashMap<>(1);
                     params.put("x-message-ttl", rpcServer.xMessageTTL());
-                    Queue syncQueue = queue(rpcName, rpcType, params);
+                    final Queue syncQueue = queue(rpcName, rpcType, params);
                     binding(rpcName, rpcType, syncQueue);
-                    RpcServerHandler syncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, getValidator(), getRpcProperties(), rpcServer.xMessageTTL(), rpcServerHandlerInterceptor);
+                    final RpcServerHandler syncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, getValidator(), getRpcProperties(), rpcServer.xMessageTTL(), rpcServerHandlerInterceptor);
                     messageListenerContainer(rpcName, rpcType, syncQueue, syncServerHandler, rpcServer.threadNum());
                 }
                 case ASYNC, DELAY -> {
-                    Queue asyncQueue = queue(rpcName, rpcType, null);
+                    final Queue asyncQueue = queue(rpcName, rpcType, null);
                     binding(rpcName, rpcType, asyncQueue);
-                    RpcServerHandler asyncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, getValidator(), getRpcProperties(), 0, rpcServerHandlerInterceptor);
+                    final RpcServerHandler asyncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, getValidator(), getRpcProperties(), 0, rpcServerHandlerInterceptor);
                     messageListenerContainer(rpcName, rpcType, asyncQueue, asyncServerHandler, rpcServer.threadNum());
                 }
                 default -> {
@@ -130,7 +130,7 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
     private void messageListenerContainer(
             String rpcName, RpcType rpcType, Queue queue, RpcServerHandler rpcServerHandler, int threadNum
     ) {
-        SimpleMessageListenerContainer messageListenerContainer = registerBean(this.applicationContext, rpcType.getName() + "-MessageListenerContainer-" + rpcName, SimpleMessageListenerContainer.class, this.connectionFactory);
+        final SimpleMessageListenerContainer messageListenerContainer = registerBean(this.applicationContext, rpcType.getName() + "-MessageListenerContainer-" + rpcName, SimpleMessageListenerContainer.class, this.connectionFactory);
         messageListenerContainer.setQueueNames(queue.getName());
         messageListenerContainer.setMessageListener(rpcServerHandler);
         messageListenerContainer.setAcknowledgeMode(AcknowledgeMode.MANUAL);
@@ -210,12 +210,12 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
     private <T> T registerBean(
             ConfigurableApplicationContext applicationContext, String name, Class<T> clazz, Object... args
     ) {
-        BeanDefinitionBuilder beanDefinitionBuilder = BeanDefinitionBuilder.genericBeanDefinition(clazz);
+        final BeanDefinitionBuilder beanDefinitionBuilder = BeanDefinitionBuilder.genericBeanDefinition(clazz);
         for (Object arg : args) {
             beanDefinitionBuilder.addConstructorArgValue(arg);
         }
-        BeanDefinition beanDefinition = beanDefinitionBuilder.getRawBeanDefinition();
-        BeanDefinitionRegistry beanFactory = (BeanDefinitionRegistry) (applicationContext).getBeanFactory();
+        final BeanDefinition beanDefinition = beanDefinitionBuilder.getRawBeanDefinition();
+        final BeanDefinitionRegistry beanFactory = (BeanDefinitionRegistry) (applicationContext).getBeanFactory();
         if (beanFactory.isBeanNameInUse(name)) {
             throw new RuntimeException("BeanName: " + name + " 重复");
         }

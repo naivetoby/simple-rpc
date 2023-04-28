@@ -32,7 +32,7 @@ public class RpcClientScannerConfigurer implements BeanDefinitionRegistryPostPro
 
     @Override
     public void postProcessBeanDefinitionRegistry(@Nonnull BeanDefinitionRegistry registry) throws BeansException {
-        ClassPathRpcClientScanner scanner = new ClassPathRpcClientScanner(registry);
+        final ClassPathRpcClientScanner scanner = new ClassPathRpcClientScanner(registry);
         scanner.setResourceLoader(this.applicationContext);
         scanner.registerFilters();
         scanner.scan(StringUtils.tokenizeToStringArray(this.basePackage, ConfigurableApplicationContext.CONFIG_LOCATION_DELIMITERS));

@@ -20,7 +20,7 @@ public class RpcClientConfigurerRegistrar implements ImportBeanDefinitionRegistr
     public void registerBeanDefinitions(
             @Nonnull AnnotationMetadata importingClassMetadata, @Nonnull BeanDefinitionRegistry registry
     ) {
-        BeanDefinitionBuilder builder = BeanDefinitionBuilder.genericBeanDefinition(RpcClientConfigurationSupport.class);
+        final BeanDefinitionBuilder builder = BeanDefinitionBuilder.genericBeanDefinition(RpcClientConfigurationSupport.class);
         registry.registerBeanDefinition(RpcClientConfigurationSupport.class.getName(), builder.getBeanDefinition());
     }
 

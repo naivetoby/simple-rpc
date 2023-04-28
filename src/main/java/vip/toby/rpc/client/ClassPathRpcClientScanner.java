@@ -38,7 +38,7 @@ public class ClassPathRpcClientScanner extends ClassPathBeanDefinitionScanner {
     @Override
     @Nonnull
     public Set<BeanDefinitionHolder> doScan(@Nonnull String... basePackages) {
-        Set<BeanDefinitionHolder> beanDefinitions = super.doScan(basePackages);
+        final Set<BeanDefinitionHolder> beanDefinitions = super.doScan(basePackages);
         if (beanDefinitions.isEmpty()) {
             log.debug("No @RpcClient was found in '{}' package. Please check your configuration.", Arrays.toString(basePackages));
         } else {
@@ -51,7 +51,7 @@ public class ClassPathRpcClientScanner extends ClassPathBeanDefinitionScanner {
         GenericBeanDefinition rpcClientBeanDefinition;
         for (BeanDefinitionHolder holder : beanDefinitions) {
             rpcClientBeanDefinition = (GenericBeanDefinition) holder.getBeanDefinition();
-            String beanClassName = rpcClientBeanDefinition.getBeanClassName();
+            final String beanClassName = rpcClientBeanDefinition.getBeanClassName();
             if (beanClassName != null) {
                 // 获取真实接口 class，并作为构造方法的参数
                 rpcClientBeanDefinition.getConstructorArgumentValues().addGenericArgumentValue(beanClassName);

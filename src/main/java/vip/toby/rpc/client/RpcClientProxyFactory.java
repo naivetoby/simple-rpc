@@ -50,14 +50,14 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
     @Override
     public T getObject() {
         RabbitTemplate sender;
-        RpcClient rpcClient = this.rpcClientInterface.getAnnotation(RpcClient.class);
-        String rpcName = rpcClient.value();
-        RpcType rpcType = rpcClient.type();
-        int replyTimeout = rpcClient.replyTimeout();
+        final RpcClient rpcClient = this.rpcClientInterface.getAnnotation(RpcClient.class);
+        final String rpcName = rpcClient.value();
+        final RpcType rpcType = rpcClient.type();
+        final int replyTimeout = rpcClient.replyTimeout();
         if (rpcType == RpcType.SYNC) {
-            Queue replyQueue = replyQueue(rpcName, UUID.randomUUID().toString());
+            final Queue replyQueue = replyQueue(rpcName, UUID.randomUUID().toString());
             replyBinding(rpcName, replyQueue);
-            RabbitTemplate syncSender = syncSender(rpcName, replyQueue, replyTimeout, getConnectionFactory());
+            final RabbitTemplate syncSender = syncSender(rpcName, replyQueue, replyTimeout, getConnectionFactory());
             replyMessageListenerContainer(rpcName, replyQueue, syncSender, getConnectionFactory());
             sender = syncSender;
         } else if (rpcType == RpcType.ASYNC) {
@@ -98,7 +98,7 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
     private void replyMessageListenerContainer(
             String rpcName, Queue queue, RabbitTemplate syncSender, ConnectionFactory connectionFactory
     ) {
-        SimpleMessageListenerContainer replyMessageListenerContainer = registerBean(RpcType.SYNC.getName() + "-ReplyMessageListenerContainer-" + rpcName, SimpleMessageListenerContainer.class, connectionFactory);
+        final SimpleMessageListenerContainer replyMessageListenerContainer = registerBean(RpcType.SYNC.getName() + "-ReplyMessageListenerContainer-" + rpcName, SimpleMessageListenerContainer.class, connectionFactory);
         replyMessageListenerContainer.setQueueNames(queue.getName());
         replyMessageListenerContainer.setMessageListener(syncSender);
     }
@@ -107,7 +107,7 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
      * 实例化 AsyncSender
      */
     private RabbitTemplate asyncSender(String rpcName, ConnectionFactory connectionFactory) {
-        RabbitTemplate asyncSender = registerBean(RpcType.ASYNC.getName() + "-Sender-" + rpcName, RabbitTemplate.class, connectionFactory);
+        final RabbitTemplate asyncSender = registerBean(RpcType.ASYNC.getName() + "-Sender-" + rpcName, RabbitTemplate.class, connectionFactory);
         asyncSender.setRoutingKey(rpcName + ".async");
         asyncSender.setUserCorrelationId(true);
         return asyncSender;
@@ -117,7 +117,7 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
      * 实例化 DelaySender
      */
     private RabbitTemplate delaySender(String rpcName, ConnectionFactory connectionFactory) {
-        RabbitTemplate delaySender = registerBean(RpcType.DELAY.getName() + "-Sender-" + rpcName, RabbitTemplate.class, connectionFactory);
+        final RabbitTemplate delaySender = registerBean(RpcType.DELAY.getName() + "-Sender-" + rpcName, RabbitTemplate.class, connectionFactory);
         delaySender.setRoutingKey(rpcName + ".delay");
         delaySender.setUserCorrelationId(true);
         return delaySender;
@@ -129,10 +129,10 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
     private RabbitTemplate syncSender(
             String rpcName, Queue replyQueue, int replyTimeout, ConnectionFactory connectionFactory
     ) {
-        SimpleRetryPolicy simpleRetryPolicy = new SimpleRetryPolicy();
-        RetryTemplate retryTemplate = new RetryTemplate();
+        final SimpleRetryPolicy simpleRetryPolicy = new SimpleRetryPolicy();
+        final RetryTemplate retryTemplate = new RetryTemplate();
         retryTemplate.setRetryPolicy(simpleRetryPolicy);
-        RabbitTemplate syncSender = registerBean(RpcType.SYNC.getName() + "-Sender-" + rpcName, RabbitTemplate.class, connectionFactory);
+        final RabbitTemplate syncSender = registerBean(RpcType.SYNC.getName() + "-Sender-" + rpcName, RabbitTemplate.class, connectionFactory);
         syncSender.setDefaultReceiveQueue(rpcName);
         syncSender.setRoutingKey(rpcName);
         syncSender.setReplyAddress(replyQueue.getName());
@@ -184,14 +184,14 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
      * 对象实例化并注册到 Spring 上下文
      */
     private <L> L registerBean(String name, Class<L> clazz, Object... args) {
-        BeanDefinitionBuilder beanDefinitionBuilder = BeanDefinitionBuilder.genericBeanDefinition(clazz);
+        final BeanDefinitionBuilder beanDefinitionBuilder = BeanDefinitionBuilder.genericBeanDefinition(clazz);
         if (args != null) {
             for (Object arg : args) {
                 beanDefinitionBuilder.addConstructorArgValue(arg);
             }
         }
-        BeanDefinition beanDefinition = beanDefinitionBuilder.getRawBeanDefinition();
-        BeanDefinitionRegistry beanDefinitionRegistry = (BeanDefinitionRegistry) this.beanFactory;
+        final BeanDefinition beanDefinition = beanDefinitionBuilder.getRawBeanDefinition();
+        final BeanDefinitionRegistry beanDefinitionRegistry = (BeanDefinitionRegistry) this.beanFactory;
         if (beanDefinitionRegistry.isBeanNameInUse(name)) {
             throw new RuntimeException("BeanName: " + name + " 重复");
         }

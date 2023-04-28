@@ -96,7 +96,7 @@ public class ServerResult {
     }
 
     public JSONObject toJSON() {
-        JSONObject result = new JSONObject();
+        final JSONObject result = new JSONObject();
         result.put("status", this.operateStatus.getStatus());
         result.put("message", this.message);
         if (this.operateStatus == OperateStatus.SUCCESS) {

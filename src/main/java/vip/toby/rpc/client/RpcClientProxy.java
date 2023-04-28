@@ -53,7 +53,7 @@ public class RpcClientProxy<T> implements InvocationHandler {
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) {
         // 获取方法注解
-        RpcClientMethod rpcClientMethod = method.getAnnotation(RpcClientMethod.class);
+        final RpcClientMethod rpcClientMethod = method.getAnnotation(RpcClientMethod.class);
         if (rpcClientMethod == null) {
             try {
                 if (Object.class.equals(method.getDeclaringClass())) {
@@ -79,7 +79,7 @@ public class RpcClientProxy<T> implements InvocationHandler {
         }
         // 组装data
         JSONObject data = new JSONObject();
-        Parameter[] parameters = method.getParameters();
+        final Parameter[] parameters = method.getParameters();
         if (this.rpcType == RpcType.DELAY) {
             if (parameters.length != 1) {
                 throw new RuntimeException("DELAY-RpcClient 只能包含唯一参数, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
@@ -93,7 +93,7 @@ public class RpcClientProxy<T> implements InvocationHandler {
             }
         }
         for (int i = 0; i < parameters.length; i++) {
-            Parameter parameter = parameters[i];
+            final Parameter parameter = parameters[i];
             if (parameter.getType() == JSONObject.class) {
                 // JSONObject
                 data.putAll((JSONObject) args[i]);
@@ -106,20 +106,20 @@ public class RpcClientProxy<T> implements InvocationHandler {
             }
         }
         // 调用参数
-        JSONObject paramData = new JSONObject();
+        final JSONObject paramData = new JSONObject();
         paramData.put("command", methodName);
         paramData.put("data", data);
         // MessageProperties
-        MessageProperties messageProperties = new MessageProperties();
+        final MessageProperties messageProperties = new MessageProperties();
         messageProperties.setContentType(MessageProperties.CONTENT_TYPE_BYTES);
         messageProperties.setCorrelationId(UUID.randomUUID().toString());
         if (this.rpcType == RpcType.DELAY) {
             messageProperties.setDelay(data.getIntValue("delay", 0));
         }
         // Message
-        Message message = new Message(JSON.toJSONBytes(paramData), messageProperties);
+        final Message message = new Message(JSON.toJSONBytes(paramData), messageProperties);
         // CorrelationData
-        CorrelationData correlationData = new CorrelationData(UUID.randomUUID().toString());
+        final CorrelationData correlationData = new CorrelationData(UUID.randomUUID().toString());
         try {
             if (this.rpcType == RpcType.ASYNC) {
                 this.sender.send("simple.rpc.async", this.sender.getRoutingKey(), message, correlationData);
@@ -132,30 +132,30 @@ public class RpcClientProxy<T> implements InvocationHandler {
                 return null;
             }
             // 发起请求并返回结果
-            long start = System.currentTimeMillis();
-            Message resultObj = this.sender.sendAndReceive("simple.rpc.sync", this.sender.getRoutingKey(), message, correlationData);
+            final long start = System.currentTimeMillis();
+            final Message resultObj = this.sender.sendAndReceive("simple.rpc.sync", this.sender.getRoutingKey(), message, correlationData);
             if (resultObj == null) {
                 // 无返回任何结果，说明服务器负载过高，没有及时处理请求，导致超时
                 log.error("Service Unavailable! Duration: {}ms, {}-RpcClient-{}, Method: {}, Param: {}", System.currentTimeMillis() - start, this.rpcType.getName(), this.rpcName, methodName, paramData);
                 return RpcResult.buildUnavailable();
             }
             // 获取调用结果的状态
-            JSONObject resultJson = JSON.parseObject(resultObj.getBody());
-            int status = resultJson.getIntValue("status");
-            Object resultData = resultJson.get("data");
-            ServerStatus serverStatus = ServerStatus.getServerStatus(status);
+            final JSONObject resultJson = JSON.parseObject(resultObj.getBody());
+            final int status = resultJson.getIntValue("status");
+            final Object resultData = resultJson.get("data");
+            final ServerStatus serverStatus = ServerStatus.getServerStatus(status);
             if (serverStatus != ServerStatus.SUCCESS || resultData == null) {
                 log.error("{}! Duration: {}ms, {}-RpcClient-{}, Method: {}, Param: {}", serverStatus.getMessage(), System.currentTimeMillis() - start, this.rpcType.getName(), this.rpcName, methodName, paramData);
                 return RpcResult.build(serverStatus);
             }
             // 获取操作层的状态
-            JSONObject serverResultJson = JSON.parseObject(resultData.toString());
-            RpcResult rpcResult = RpcResult.buildSuccess()
+            final JSONObject serverResultJson = JSON.parseObject(resultData.toString());
+            final RpcResult rpcResult = RpcResult.buildSuccess()
                     .result(ServerResult.build(OperateStatus.getOperateStatus(serverResultJson.getIntValue("status")))
                             .message(serverResultJson.getString("message"))
                             .result(serverResultJson.get("result"))
                             .errorCode(serverResultJson.getIntValue("errorCode")));
-            long offset = System.currentTimeMillis() - start;
+            final long offset = System.currentTimeMillis() - start;
             if (offset > Math.floor(this.rpcProperties.getClientSlowCallTimePercent() * this.replyTimeout)) {
                 log.warn("Call Slowing! Duration: {}ms, {}-RpcClient-{}, Method: {}, Param: {}, RpcResult: {}", offset, this.rpcType.getName(), this.rpcName, methodName, paramData, rpcResult);
             } else {

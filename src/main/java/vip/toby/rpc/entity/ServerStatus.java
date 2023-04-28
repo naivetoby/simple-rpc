@@ -46,7 +46,7 @@ public enum ServerStatus {
     }
 
     public JSONObject toJSON() {
-        JSONObject json = new JSONObject();
+        final JSONObject json = new JSONObject();
         json.put("status", this.status);
         json.put("message", this.message);
         return json;
