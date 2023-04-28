@@ -60,8 +60,10 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
             RabbitTemplate syncSender = syncSender(rpcName, replyQueue, replyTimeout, getConnectionFactory());
             replyMessageListenerContainer(rpcName, replyQueue, syncSender, getConnectionFactory());
             sender = syncSender;
-        } else {
+        } else if (rpcType == RpcType.ASYNC) {
             sender = asyncSender(rpcName, getConnectionFactory());
+        } else {
+            sender = delaySender(rpcName, getConnectionFactory());
         }
         return (T) Proxy.newProxyInstance(this.rpcClientInterface.getClassLoader(), new Class[]{this.rpcClientInterface}, new RpcClientProxy<>(this.rpcClientInterface, rpcName, rpcType, sender, getRpcProperties(), replyTimeout));
     }
@@ -108,6 +110,17 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
         RabbitTemplate asyncSender = registerBean(RpcType.ASYNC.getName() + "-Sender-" + rpcName, RabbitTemplate.class, connectionFactory);
         asyncSender.setDefaultReceiveQueue(rpcName + ".async");
         asyncSender.setRoutingKey(rpcName + ".async");
+        asyncSender.setUserCorrelationId(true);
+        return asyncSender;
+    }
+
+    /**
+     * 实例化 DelaySender
+     */
+    private RabbitTemplate delaySender(String rpcName, ConnectionFactory connectionFactory) {
+        RabbitTemplate asyncSender = registerBean(RpcType.DELAY.getName() + "-Sender-" + rpcName, RabbitTemplate.class, connectionFactory);
+        asyncSender.setDefaultReceiveQueue(rpcName + ".delay");
+        asyncSender.setRoutingKey(rpcName + ".delay");
         asyncSender.setUserCorrelationId(true);
         return asyncSender;
     }

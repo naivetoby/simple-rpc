@@ -148,7 +148,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                     return;
                 }
                 // 异步执行任务
-                if (RpcType.ASYNC == this.rpcType) {
+                if (RpcType.ASYNC == this.rpcType || RpcType.DELAY == this.rpcType) {
                     long start = System.currentTimeMillis();
                     asyncExecute(command, data, messageProperties.getCorrelationId());
                     double offset = System.currentTimeMillis() - start;
@@ -177,7 +177,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                 log.error(e.getMessage(), e);
             }
             // 异步执行任务
-            if (RpcType.ASYNC == this.rpcType) {
+            if (RpcType.ASYNC == this.rpcType || RpcType.DELAY == this.rpcType) {
                 return;
             }
             // 状态设置

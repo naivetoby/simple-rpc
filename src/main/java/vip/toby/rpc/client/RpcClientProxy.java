@@ -66,6 +66,9 @@ public class RpcClientProxy<T> implements InvocationHandler {
         if (this.rpcType == RpcType.ASYNC && method.getGenericReturnType() != Void.TYPE) {
             throw new RuntimeException("ASYNC-RpcClient 返回类型只能为 void, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
         }
+        if (this.rpcType == RpcType.DELAY && method.getGenericReturnType() != Void.TYPE) {
+            throw new RuntimeException("DELAY-RpcClient 返回类型只能为 void, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
+        }
         if (this.rpcType == RpcType.SYNC && method.getGenericReturnType() != RpcResult.class) {
             throw new RuntimeException("SYNC-RpcClient 返回类型只能为 RpcResult, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
         }
@@ -76,6 +79,14 @@ public class RpcClientProxy<T> implements InvocationHandler {
         // 组装data
         JSONObject data = new JSONObject();
         Parameter[] parameters = method.getParameters();
+        if (this.rpcType == RpcType.DELAY) {
+            if (parameters.length != 1) {
+                throw new RuntimeException("DELAY-RpcClient 只能含一个参数, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
+            }
+            if (!(parameters[0].getParameterizedType() instanceof RpcDelayDTO)) {
+                throw new RuntimeException("DELAY-RpcClient 参数必须继承 RpcDelayDTO, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
+            }
+        }
         for (int i = 0; i < parameters.length; i++) {
             Parameter parameter = parameters[i];
             if (parameter.getType() == JSONObject.class) {
@@ -97,12 +108,15 @@ public class RpcClientProxy<T> implements InvocationHandler {
         MessageProperties messageProperties = new MessageProperties();
         messageProperties.setContentType(MessageProperties.CONTENT_TYPE_BYTES);
         messageProperties.setCorrelationId(UUID.randomUUID().toString());
+        if (this.rpcType == RpcType.DELAY) {
+            messageProperties.setDelay(data.getIntValue("delay", 0));
+        }
         // Message
         Message message = new Message(JSON.toJSONBytes(paramData), messageProperties);
         // CorrelationData
         CorrelationData correlationData = new CorrelationData(UUID.randomUUID().toString());
         try {
-            if (this.rpcType == RpcType.ASYNC) {
+            if (this.rpcType == RpcType.ASYNC || this.rpcType == RpcType.DELAY) {
                 this.sender.send(this.sender.getRoutingKey(), message, correlationData);
                 log.debug("{}-RpcClient-{}, Method: {}, Param: {}", this.rpcType.getName(), this.rpcName, methodName, paramData);
                 return null;

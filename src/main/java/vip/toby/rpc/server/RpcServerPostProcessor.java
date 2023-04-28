@@ -5,10 +5,7 @@ import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.validator.HibernateValidator;
-import org.springframework.amqp.core.AcknowledgeMode;
-import org.springframework.amqp.core.Binding;
-import org.springframework.amqp.core.DirectExchange;
-import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
 import org.springframework.beans.BeansException;
@@ -47,8 +44,9 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
         this.rpcServerHandlerInterceptor = rpcServerHandlerInterceptor;
     }
 
-    private DirectExchange syncDirectExchange;
-    private DirectExchange asyncDirectExchange;
+    private AbstractExchange syncDirectExchange;
+    private AbstractExchange asyncDirectExchange;
+    private AbstractExchange delayDirectExchange;
     private Validator validator;
     private RpcProperties rpcProperties;
 
@@ -85,7 +83,7 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
                     RpcServerHandler syncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, getValidator(), getRpcProperties(), rpcServer.xMessageTTL(), rpcServerHandlerInterceptor);
                     messageListenerContainer(rpcName, rpcType, syncQueue, syncServerHandler, rpcServer.threadNum());
                 }
-                case ASYNC -> {
+                case ASYNC, DELAY -> {
                     Queue asyncQueue = queue(rpcName, rpcType, null);
                     binding(rpcName, rpcType, asyncQueue);
                     RpcServerHandler asyncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, getValidator(), getRpcProperties(), 0, rpcServerHandlerInterceptor);
@@ -101,7 +99,7 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
      * 实例化 Queue
      */
     private Queue queue(String rpcName, RpcType rpcType, Map<String, Object> params) {
-        return registerBean(this.applicationContext, rpcType.getName() + "-Queue-" + rpcName, Queue.class, rpcType == RpcType.ASYNC ? (rpcName + ".async") : rpcName, rpcType == RpcType.ASYNC, false, false, params);
+        return registerBean(this.applicationContext, rpcType.getName() + "-Queue-" + rpcName, Queue.class, rpcType == RpcType.DELAY ? (rpcName + ".delay") : (rpcType == RpcType.ASYNC ? (rpcName + ".async") : rpcName), rpcType == RpcType.ASYNC || rpcType == RpcType.DELAY, false, false, params);
     }
 
     /**
@@ -170,7 +168,8 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
     /**
      * 实例化 DirectExchange
      */
-    private DirectExchange getDirectExchange(RpcType rpcType) {
+    private AbstractExchange getDirectExchange(RpcType rpcType) {
+        // 同步
         if (rpcType == RpcType.SYNC) {
             if (this.syncDirectExchange == null) {
                 if (this.applicationContext.containsBean("syncDirectExchange")) {
@@ -181,14 +180,28 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
             }
             return this.syncDirectExchange;
         }
-        if (this.asyncDirectExchange == null) {
-            if (this.applicationContext.containsBean("asyncDirectExchange")) {
-                this.asyncDirectExchange = this.applicationContext.getBean("asyncDirectExchange", DirectExchange.class);
+        // 异步
+        if (rpcType == RpcType.ASYNC) {
+            if (this.asyncDirectExchange == null) {
+                if (this.applicationContext.containsBean("asyncDirectExchange")) {
+                    this.asyncDirectExchange = this.applicationContext.getBean("asyncDirectExchange", DirectExchange.class);
+                } else {
+                    this.asyncDirectExchange = registerBean(this.applicationContext, "asyncDirectExchange", DirectExchange.class, "simple.rpc.async", true, false);
+                }
+            }
+            return this.asyncDirectExchange;
+        }
+        // 延迟
+        if (this.delayDirectExchange == null) {
+            if (this.applicationContext.containsBean("delayDirectExchange")) {
+                this.delayDirectExchange = this.applicationContext.getBean("delayDirectExchange", CustomExchange.class);
             } else {
-                this.asyncDirectExchange = registerBean(this.applicationContext, "asyncDirectExchange", DirectExchange.class, "simple.rpc.async", true, false);
+                final Map<String, Object> args = new HashMap<>();
+                args.put("x-delayed-type", "direct");
+                this.delayDirectExchange = registerBean(this.applicationContext, "delayDirectExchange", CustomExchange.class, "simple.rpc.delay", "x-delayed-message", true, false, args);
             }
         }
-        return this.asyncDirectExchange;
+        return this.delayDirectExchange;
     }
 
     /**
