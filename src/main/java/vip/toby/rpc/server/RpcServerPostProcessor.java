@@ -3,7 +3,6 @@ package vip.toby.rpc.server;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
-import lombok.RequiredArgsConstructor;
 import org.hibernate.validator.HibernateValidator;
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
@@ -15,6 +14,7 @@ import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import vip.toby.rpc.annotation.RpcServer;
 import vip.toby.rpc.entity.RpcType;
@@ -32,15 +32,20 @@ import java.util.Map;
  * @author toby
  */
 @Component
-@RequiredArgsConstructor
 public class RpcServerPostProcessor implements BeanPostProcessor {
 
     private final ConfigurableApplicationContext applicationContext;
     private final ConnectionFactory connectionFactory;
-    private RpcServerHandlerInterceptor rpcServerHandlerInterceptor;
+    private final RpcServerHandlerInterceptor rpcServerHandlerInterceptor;
 
-    @Autowired(required = false)
-    public void setRpcServerHandlerInterceptor(RpcServerHandlerInterceptor rpcServerHandlerInterceptor) {
+    @Autowired
+    public RpcServerPostProcessor(
+            ConfigurableApplicationContext applicationContext,
+            @Lazy ConnectionFactory connectionFactory,
+            @Lazy RpcServerHandlerInterceptor rpcServerHandlerInterceptor
+    ) {
+        this.applicationContext = applicationContext;
+        this.connectionFactory = connectionFactory;
         this.rpcServerHandlerInterceptor = rpcServerHandlerInterceptor;
     }
 

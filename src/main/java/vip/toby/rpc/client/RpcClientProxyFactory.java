@@ -73,11 +73,6 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
         return this.rpcClientInterface;
     }
 
-    @Override
-    public boolean isSingleton() {
-        return true;
-    }
-
     /**
      * 实例化 replyQueue
      */

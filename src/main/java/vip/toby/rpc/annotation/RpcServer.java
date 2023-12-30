@@ -1,5 +1,6 @@
 package vip.toby.rpc.annotation;
 
+import org.springframework.core.annotation.AliasFor;
 import org.springframework.stereotype.Component;
 import vip.toby.rpc.entity.RpcType;
 
@@ -17,6 +18,7 @@ import java.lang.annotation.*;
 @Inherited
 public @interface RpcServer {
 
+    @AliasFor(annotation = Component.class)
     String value();
 
     int xMessageTTL() default 500;
