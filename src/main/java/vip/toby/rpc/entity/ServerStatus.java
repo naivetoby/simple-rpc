@@ -1,12 +1,14 @@
 package vip.toby.rpc.entity;
 
 import com.alibaba.fastjson2.JSONObject;
+import lombok.Getter;
 
 /**
- * rpc调用状态码
+ * RPC 调用状态码
  *
  * @author toby
  */
+@Getter
 public enum ServerStatus {
 
     SUCCESS(1, "Call Success"), // 调用成功
@@ -23,14 +25,6 @@ public enum ServerStatus {
     ServerStatus(int status, String message) {
         this.status = status;
         this.message = message;
-    }
-
-    public int getStatus() {
-        return status;
-    }
-
-    public String getMessage() {
-        return message;
     }
 
     public static ServerStatus getServerStatus(Integer status) {

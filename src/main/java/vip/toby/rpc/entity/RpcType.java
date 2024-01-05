@@ -1,10 +1,13 @@
 package vip.toby.rpc.entity;
 
+import lombok.Getter;
+
 /**
  * 调用类型
  *
  * @author toby
  */
+@Getter
 public enum RpcType {
 
     SYNC(0, "SYNC"), // 同步
@@ -17,14 +20,6 @@ public enum RpcType {
     RpcType(int type, String name) {
         this.type = type;
         this.name = name;
-    }
-
-    public int getType() {
-        return type;
-    }
-
-    public String getName() {
-        return name;
     }
 
     public static RpcType getRpcType(Integer type) {

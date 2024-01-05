@@ -1,12 +1,14 @@
 package vip.toby.rpc.entity;
 
 import com.alibaba.fastjson2.JSONObject;
+import lombok.Getter;
 
 /**
  * RpcResult
  *
  * @author toby
  */
+@Getter
 public class RpcResult {
 
     private final ServerStatus serverStatus;
@@ -40,14 +42,6 @@ public class RpcResult {
     public RpcResult result(ServerResult serverResult) {
         this.serverResult = serverResult;
         return this;
-    }
-
-    public ServerStatus getServerStatus() {
-        return this.serverStatus;
-    }
-
-    public ServerResult getServerResult() {
-        return this.serverResult;
     }
 
     @Override

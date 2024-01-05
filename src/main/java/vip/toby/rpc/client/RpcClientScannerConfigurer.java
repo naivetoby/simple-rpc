@@ -1,5 +1,6 @@
 package vip.toby.rpc.client;
 
+import lombok.Setter;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
@@ -18,16 +19,13 @@ import javax.annotation.Nonnull;
  */
 public class RpcClientScannerConfigurer implements BeanDefinitionRegistryPostProcessor, ApplicationContextAware {
 
+    @Setter
     private String basePackage;
     private ApplicationContext applicationContext;
 
     @Override
     public void setApplicationContext(@Nonnull ApplicationContext applicationContext) throws BeansException {
         this.applicationContext = applicationContext;
-    }
-
-    public void setBasePackage(String basePackage) {
-        this.basePackage = basePackage;
     }
 
     @Override

@@ -17,7 +17,7 @@
     
     <groupId>com.demo</groupId>
     <artifactId>demo</artifactId>
-    <version>2.0.8</version>
+    <version>2.0.9</version>
 
     <dependencies>
         <dependency>
@@ -27,7 +27,7 @@
         <dependency>
             <groupId>vip.toby.rpc</groupId>
             <artifactId>simple-rpc</artifactId>
-            <version>2.0.8</version>
+            <version>2.0.9</version>
         </dependency>
     </dependencies>
 </project>
@@ -98,6 +98,7 @@ public interface AsyncClient {
 
 ## Application Demo
 ```java
+
 @EnableSimpleRpc
 @SpringBootApplication
 @RequiredArgsConstructor
@@ -117,18 +118,18 @@ public class Application {
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                log.error(e.getMessage(), e);
             }
             syncClient.methodName1("param1", 2);
             syncClient.methodName1("param1", 2);
             syncClient.methodName1("dew", 46);
-            PlusDTO plusDTO = new PlusDTO();
+            final PlusDTO plusDTO = new PlusDTO();
             plusDTO.setX(1);
             plusDTO.setY(1);
-            JSONObject data = new JSONObject();
+            final JSONObject data = new JSONObject();
             data.put("x", 2);
             data.put("y", 2);
-            RpcResult rpcResult = syncClient.methodName3(plusDTO, data, 3, 3);
+            final RpcResult rpcResult = syncClient.methodName3(plusDTO, data, 3, 3);
             log.info("result: {}", rpcResult.getServerResult().getResult());
             syncClient.methodName1("yyy", 2121);
             asyncClient.methodName2("sss", 27);

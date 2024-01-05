@@ -1,9 +1,11 @@
 package vip.toby.rpc.properties;
 
+import lombok.Setter;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
+@Setter
 @Configuration
 @ConfigurationProperties(prefix = "simple-rpc", ignoreInvalidFields = true)
 public class RpcProperties {
@@ -33,18 +35,6 @@ public class RpcProperties {
             return "true";
         }
         return validatorFailFast;
-    }
-
-    public void setClientSlowCallTimePercent(Double clientSlowCallTimePercent) {
-        this.clientSlowCallTimePercent = clientSlowCallTimePercent;
-    }
-
-    public void setServerSlowCallTimePercent(Double serverSlowCallTimePercent) {
-        this.serverSlowCallTimePercent = serverSlowCallTimePercent;
-    }
-
-    public void setValidatorFailFast(String validatorFailFast) {
-        this.validatorFailFast = validatorFailFast;
     }
 
 }

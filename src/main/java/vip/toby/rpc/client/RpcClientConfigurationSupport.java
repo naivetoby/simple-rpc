@@ -75,7 +75,6 @@ public class RpcClientConfigurationSupport implements BeanDefinitionRegistryPost
     private RpcClientConfigurer getRpcClientConfigurer() {
         if (this.rpcClientConfigurer == null) {
             try {
-                // FIXME 未实现 RpcClientConfigurer 接口
                 this.rpcClientConfigurer = this.applicationContext.getBean(RpcClientConfigurer.class);
             } catch (BeansException ignored) {
             }

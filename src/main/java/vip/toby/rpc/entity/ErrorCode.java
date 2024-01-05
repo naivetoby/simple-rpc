@@ -1,10 +1,14 @@
 package vip.toby.rpc.entity;
 
+import lombok.Getter;
+
 /**
- * HTTP请求错误码
+ * HTTP 请求错误码
  *
  * @author toby
  */
+
+@Getter
 public enum ErrorCode {
 
     PARAMS_NOT_VALID(400, "Params Not Valid"), // 请求参数不正确
@@ -22,14 +26,6 @@ public enum ErrorCode {
     ErrorCode(int code, String message) {
         this.code = code;
         this.message = message;
-    }
-
-    public int getCode() {
-        return code;
-    }
-
-    public String getMessage() {
-        return message;
     }
 
     public static ErrorCode getErrorCode(Integer code) {

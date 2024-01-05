@@ -1,6 +1,7 @@
 package vip.toby.rpc.entity;
 
 import com.alibaba.fastjson2.JSONObject;
+import lombok.Getter;
 import org.slf4j.helpers.MessageFormatter;
 
 /**
@@ -8,6 +9,7 @@ import org.slf4j.helpers.MessageFormatter;
  *
  * @author toby
  */
+@Getter
 public class ServerResult {
 
     private final OperateStatus operateStatus;
@@ -77,22 +79,6 @@ public class ServerResult {
             this.errorCode = errorCode;
         }
         return this;
-    }
-
-    public OperateStatus getOperateStatus() {
-        return operateStatus;
-    }
-
-    public String getMessage() {
-        return message;
-    }
-
-    public Object getResult() {
-        return result;
-    }
-
-    public int getErrorCode() {
-        return errorCode;
     }
 
     public JSONObject toJSON() {

@@ -1,6 +1,7 @@
 package vip.toby.rpc.client;
 
 import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONB;
 import com.alibaba.fastjson2.JSONObject;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -117,7 +118,7 @@ public class RpcClientProxy<T> implements InvocationHandler {
             messageProperties.setDelay(data.getIntValue("delay", 0));
         }
         // Message
-        final Message message = new Message(JSON.toJSONBytes(paramData), messageProperties);
+        final Message message = new Message(JSONB.toBytes(paramData), messageProperties);
         // CorrelationData
         final CorrelationData correlationData = new CorrelationData(UUID.randomUUID().toString());
         try {
@@ -140,7 +141,7 @@ public class RpcClientProxy<T> implements InvocationHandler {
                 return RpcResult.buildUnavailable();
             }
             // 获取调用结果的状态
-            final JSONObject resultJson = JSON.parseObject(resultObj.getBody());
+            final JSONObject resultJson = JSONB.parseObject(resultObj.getBody());
             final int status = resultJson.getIntValue("status");
             final Object resultData = resultJson.get("data");
             final ServerStatus serverStatus = ServerStatus.getServerStatus(status);

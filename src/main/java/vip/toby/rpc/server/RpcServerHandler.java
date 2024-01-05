@@ -1,6 +1,7 @@
 package vip.toby.rpc.server;
 
 import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONB;
 import com.alibaba.fastjson2.JSONObject;
 import com.rabbitmq.client.AMQP.BasicProperties;
 import com.rabbitmq.client.Channel;
@@ -91,17 +92,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                         throw new RuntimeException("Class: " + rpcServerClass.getName() + ", Method: " + methodName + " 重复");
                     }
                     final FastMethod fastMethod = fastClass.getMethod(targetMethod);
-                    if (fastMethod == null) {
-                        throw new RuntimeException("Class: " + rpcServerClass.getName() + ", Method: " + targetMethod.getName() + " Invoke Exception");
-                    }
-                    if (fastMethod.getReturnType() != ServerResult.class) {
-                        throw new RuntimeException("返回类型只能为 ServerResult, Class: " + rpcServerClass.getName() + ", Method: " + fastMethod.getName());
-                    }
-                    final Class<?>[] parameterTypes = fastMethod.getParameterTypes();
-                    if (parameterTypes == null || parameterTypes.length != 1) {
-                        throw new RuntimeException("只能包含唯一参数, Class: " + rpcServerClass.getName() + ", Method: " + fastMethod.getName());
-                    }
-                    final Class<?> parameterType = parameterTypes[0];
+                    final Class<?> parameterType = getParameterType(targetMethod, fastMethod, rpcServerClass);
                     if (parameterType.getAnnotation(RpcDTO.class) != null) {
                         // FIXME 预热 FastJSON2 解析 和 Validator
                         validator.validate(JSON.to(parameterType, parameterType.getDeclaredConstructor()
@@ -121,6 +112,20 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
         log.info("{}-RpcServerHandler-{} 已启动", this.rpcType.getName(), this.rpcName);
     }
 
+    private static Class<?> getParameterType(Method targetMethod, FastMethod fastMethod, Class<?> rpcServerClass) {
+        if (fastMethod == null) {
+            throw new RuntimeException("Class: " + rpcServerClass.getName() + ", Method: " + targetMethod.getName() + " Invoke Exception");
+        }
+        if (fastMethod.getReturnType() != ServerResult.class) {
+            throw new RuntimeException("返回类型只能为 ServerResult, Class: " + rpcServerClass.getName() + ", Method: " + fastMethod.getName());
+        }
+        final Class<?>[] parameterTypes = fastMethod.getParameterTypes();
+        if (parameterTypes == null || parameterTypes.length != 1) {
+            throw new RuntimeException("只能包含唯一参数, Class: " + rpcServerClass.getName() + ", Method: " + fastMethod.getName());
+        }
+        return parameterTypes[0];
+    }
+
     @Override
     public void onMessage(Message message, Channel channel) throws IOException {
         ServerStatus serverStatus = ServerStatus.FAILURE;
@@ -129,7 +134,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
         try {
             messageProperties = message.getMessageProperties();
             // 组装参数 JSON
-            paramData = JSON.parseObject(message.getBody());
+            paramData = JSONB.parseObject(message.getBody());
             // 构建返回 JSON 值
             final JSONObject resultJson = new JSONObject();
             try {
@@ -195,7 +200,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
             // 反馈消息
             channel.basicPublish(messageProperties.getReplyToAddress()
                     .getExchangeName(), messageProperties.getReplyToAddress()
-                    .getRoutingKey(), replyProps, JSON.toJSONBytes(resultJson));
+                    .getRoutingKey(), replyProps, JSONB.toBytes(resultJson));
         } catch (Exception e) {
             log.error("{}-RpcServer-{} Exception! Received: {}", this.rpcType.getName(), this.rpcName, paramData);
             log.error(e.getMessage(), e);

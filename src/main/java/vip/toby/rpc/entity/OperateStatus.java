@@ -1,10 +1,13 @@
 package vip.toby.rpc.entity;
 
+import lombok.Getter;
+
 /**
  * 业务执行状态码
  *
  * @author toby
  */
+@Getter
 public enum OperateStatus {
 
     SUCCESS(1, "Success"), // 调用成功
@@ -16,14 +19,6 @@ public enum OperateStatus {
     OperateStatus(int status, String message) {
         this.status = status;
         this.message = message;
-    }
-
-    public int getStatus() {
-        return status;
-    }
-
-    public String getMessage() {
-        return message;
     }
 
     public static OperateStatus getOperateStatus(Integer status) {
