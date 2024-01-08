@@ -20,9 +20,9 @@ import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.validation.annotation.Validated;
 import vip.toby.rpc.annotation.RpcDTO;
 import vip.toby.rpc.annotation.RpcServerMethod;
+import vip.toby.rpc.entity.R;
+import vip.toby.rpc.entity.RpcStatus;
 import vip.toby.rpc.entity.RpcType;
-import vip.toby.rpc.entity.ServerResult;
-import vip.toby.rpc.entity.ServerStatus;
 import vip.toby.rpc.properties.RpcProperties;
 
 import java.io.IOException;
@@ -116,7 +116,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
         if (fastMethod == null) {
             throw new RuntimeException("Class: " + rpcServerClass.getName() + ", Method: " + targetMethod.getName() + " Invoke Exception");
         }
-        if (fastMethod.getReturnType() != ServerResult.class) {
+        if (fastMethod.getReturnType() != R.class) {
             throw new RuntimeException("返回类型只能为 ServerResult, Class: " + rpcServerClass.getName() + ", Method: " + fastMethod.getName());
         }
         final Class<?>[] parameterTypes = fastMethod.getParameterTypes();
@@ -128,7 +128,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
 
     @Override
     public void onMessage(Message message, Channel channel) throws IOException {
-        ServerStatus serverStatus = ServerStatus.FAILURE;
+        RpcStatus rpcStatus = RpcStatus.FAIL;
         MessageProperties messageProperties = null;
         JSONObject paramData = null;
         try {
@@ -171,10 +171,10 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                     final long offset = System.currentTimeMillis() - start;
                     log(paramData, command, offset);
                     // 修改状态
-                    serverStatus = ServerStatus.SUCCESS;
-                    resultJson.put("data", ((ServerResult) serverResult).toJSON());
+                    rpcStatus = RpcStatus.OK;
+                    resultJson.put("data", ((R) serverResult).toJSON());
                 } else {
-                    serverStatus = ServerStatus.NOT_EXIST;
+                    rpcStatus = RpcStatus.NOT_FOUND;
                 }
             } catch (InvocationTargetException e) {
                 // 获取目标异常
@@ -190,8 +190,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                 return;
             }
             // 状态设置
-            resultJson.put("status", serverStatus.getStatus());
-            resultJson.put("message", serverStatus.getMessage());
+            resultJson.put("status", rpcStatus.getStatus());
             // 构建配置
             final BasicProperties replyProps = new BasicProperties.Builder().correlationId(messageProperties.getCorrelationId())
                     .contentEncoding(StandardCharsets.UTF_8.name())
@@ -288,11 +287,11 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
         // 重复调用检测
         if (this.rpcServerHandlerInterceptor != null && this.rpcServerHandlerInterceptor.rpcDuplicateHandle(key, correlationId)) {
             log.warn("Call Duplicate! {}-RpcServer-{}, Method: {}", this.rpcType.getName(), this.rpcName, command);
-            return ServerResult.buildFailureMessage("Call Duplicate").errorCode(-1);
+            return R.failMessage("Call Duplicate").errorCode(-1);
         }
         if (!METHOD_ALLOW_DUPLICATE_MAP.get(key) && this.rpcServerHandlerInterceptor != null && this.rpcServerHandlerInterceptor.duplicateHandle(key, data)) {
             log.warn("Call Duplicate! {}-RpcServer-{}, Method: {}", this.rpcType.getName(), this.rpcName, command);
-            return ServerResult.buildFailureMessage("Call Duplicate").errorCode(-1);
+            return R.failMessage("Call Duplicate").errorCode(-1);
         }
         final Class<?> parameterType = FAST_METHOD_PARAMETER_TYPE_MAP.get(key);
         // JavaBean 参数
@@ -314,7 +313,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                         final List<String> tipList = new ArrayList<>();
                         constraintViolations.forEach(constraintViolationImpl -> tipList.add(constraintViolationImpl.getMessage()));
                         log.error("Param Invalid! Detail: {}, {}-RpcServer-{}, Method: {}", StringUtils.join(tipList, ", "), this.rpcType.getName(), this.rpcName, command);
-                        return ServerResult.buildFailureMessage(StringUtils.join(tipList, ", "));
+                        return R.failMessage(StringUtils.join(tipList, ", "));
                     }
                     break;
                 }

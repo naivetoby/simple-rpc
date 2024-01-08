@@ -138,24 +138,23 @@ public class RpcClientProxy<T> implements InvocationHandler {
             if (resultObj == null) {
                 // 无返回任何结果，说明服务器负载过高，没有及时处理请求，导致超时
                 log.error("Service Unavailable! Duration: {}ms, {}-RpcClient-{}, Method: {}, Param: {}", System.currentTimeMillis() - start, this.rpcType.getName(), this.rpcName, methodName, paramData);
-                return RpcResult.buildUnavailable();
+                return RpcResult.build(RpcStatus.UNAVAILABLE);
             }
             // 获取调用结果的状态
             final JSONObject resultJson = JSONB.parseObject(resultObj.getBody());
             final int status = resultJson.getIntValue("status");
             final Object resultData = resultJson.get("data");
-            final ServerStatus serverStatus = ServerStatus.getServerStatus(status);
-            if (serverStatus != ServerStatus.SUCCESS || resultData == null) {
-                log.error("{}! Duration: {}ms, {}-RpcClient-{}, Method: {}, Param: {}", serverStatus.getMessage(), System.currentTimeMillis() - start, this.rpcType.getName(), this.rpcName, methodName, paramData);
-                return RpcResult.build(serverStatus);
+            final RpcStatus rpcStatus = RpcStatus.of(status);
+            if (rpcStatus != RpcStatus.OK || resultData == null) {
+                log.error("{}! Duration: {}ms, {}-RpcClient-{}, Method: {}, Param: {}", rpcStatus.getMessage(), System.currentTimeMillis() - start, this.rpcType.getName(), this.rpcName, methodName, paramData);
+                return RpcResult.build(rpcStatus);
             }
             // 获取操作层的状态
             final JSONObject serverResultJson = JSON.parseObject(resultData.toString());
-            final RpcResult rpcResult = RpcResult.buildSuccess()
-                    .result(ServerResult.build(OperateStatus.getOperateStatus(serverResultJson.getIntValue("status")))
-                            .message(serverResultJson.getString("message"))
-                            .result(serverResultJson.get("result"))
-                            .errorCode(serverResultJson.getIntValue("errorCode")));
+            final RpcResult rpcResult = RpcResult.okResult(R.build(RStatus.of(serverResultJson.getIntValue("status")))
+                    .message(serverResultJson.getString("message"))
+                    .result(serverResultJson.get("result"))
+                    .errorCode(serverResultJson.getIntValue("errorCode")));
             final long offset = System.currentTimeMillis() - start;
             if (offset > Math.floor(this.rpcProperties.getClientSlowCallTimePercent() * this.replyTimeout)) {
                 log.warn("Call Slowing! Duration: {}ms, {}-RpcClient-{}, Method: {}, Param: {}, RpcResult: {}", offset, this.rpcType.getName(), this.rpcName, methodName, paramData, rpcResult);

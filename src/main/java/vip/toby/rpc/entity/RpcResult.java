@@ -11,47 +11,47 @@ import lombok.Getter;
 @Getter
 public class RpcResult {
 
-    private final ServerStatus serverStatus;
-    private ServerResult serverResult;
+    private final RpcStatus status;
+    private R result;
 
-    private RpcResult(ServerStatus serverStatus, ServerResult serverResult) {
-        this.serverStatus = serverStatus;
-        this.serverResult = serverResult;
+    private RpcResult(RpcStatus status, R result) {
+        this.status = status;
+        this.result = result;
     }
 
-    public static RpcResult build(ServerStatus serverStatus) {
-        return new RpcResult(serverStatus, null);
+    public static RpcResult build(RpcStatus status) {
+        return new RpcResult(status, null);
     }
 
-    public static RpcResult buildSuccess() {
-        return build(ServerStatus.SUCCESS);
+    public static RpcResult okResult(R result) {
+        return build(RpcStatus.OK).result(result);
     }
 
-    public static RpcResult buildFailure() {
-        return build(ServerStatus.FAILURE);
-    }
-
-    public static RpcResult buildNotExist() {
-        return build(ServerStatus.NOT_EXIST);
-    }
-
-    public static RpcResult buildUnavailable() {
-        return build(ServerStatus.UNAVAILABLE);
-    }
-
-    public RpcResult result(ServerResult serverResult) {
-        this.serverResult = serverResult;
+    public RpcResult result(R result) {
+        this.result = result;
         return this;
+    }
+
+    public boolean isRStatusOk() {
+        return this.getStatus() == RpcStatus.OK && this.getResult() != null && this.getResult()
+                .getStatus() == RStatus.OK;
+    }
+
+    public Object getRResult() {
+        if (isRStatusOk()) {
+            return this.getResult().getResult();
+        }
+        return null;
     }
 
     @Override
     public String toString() {
         final JSONObject result = new JSONObject();
-        result.put("serverStatus", this.serverStatus.toJSON());
-        if (this.serverResult != null) {
-            result.put("serverResult", this.serverResult.toJSON());
+        result.put("status", this.status.toJSON());
+        if (this.result != null) {
+            result.put("result", this.result.toJSON());
         }
-        return result.toString();
+        return result.toJSONString();
     }
 
 }

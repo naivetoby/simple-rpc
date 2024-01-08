@@ -22,7 +22,7 @@ public enum RpcType {
         this.name = name;
     }
 
-    public static RpcType getRpcType(Integer type) {
+    public static RpcType of(Integer type) {
         if (type == null) {
             return SYNC;
         }
