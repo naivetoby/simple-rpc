@@ -2,7 +2,6 @@ package vip.toby.rpc.client;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.support.*;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
@@ -59,14 +58,10 @@ public class RpcClientConfigurationSupport implements BeanDefinitionRegistryPost
             rpcClientBeanDefinition.setBeanClass(RpcClientProxyFactory.class);
             // 采用按照类型注入的方式
             rpcClientBeanDefinition.setAutowireMode(AbstractBeanDefinition.AUTOWIRE_BY_TYPE);
+            // FIXME
             beanDefinitionRegistry.registerBeanDefinition(beanClassName, rpcClientBeanDefinition);
             log.debug("@RpcClient was found at {}", beanClassName);
         }
-    }
-
-    @Override
-    public void postProcessBeanFactory(@Nonnull ConfigurableListableBeanFactory beanFactory) throws BeansException {
-
     }
 
     /**

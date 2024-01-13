@@ -1,6 +1,7 @@
 package vip.toby.rpc.client;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.aot.AotDetector;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinitionHolder;
 import org.springframework.beans.factory.support.AbstractBeanDefinition;
@@ -24,6 +25,7 @@ public class ClassPathRpcClientScanner extends ClassPathBeanDefinitionScanner {
 
     ClassPathRpcClientScanner(BeanDefinitionRegistry registry) {
         super(registry, false);
+        setIncludeAnnotationConfig(!AotDetector.useGeneratedArtifacts());
     }
 
     void registerFilters() {
