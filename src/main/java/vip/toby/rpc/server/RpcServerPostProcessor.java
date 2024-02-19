@@ -7,6 +7,7 @@ import org.hibernate.validator.HibernateValidator;
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
+import org.springframework.aot.AotDetector;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.BeanDefinition;
@@ -215,6 +216,9 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
     private <T> T registerBean(
             ConfigurableApplicationContext applicationContext, String name, Class<T> clazz, Object... args
     ) {
+        if (AotDetector.useGeneratedArtifacts()) {
+            return applicationContext.getBean(name, clazz);
+        }
         final BeanDefinitionBuilder beanDefinitionBuilder = BeanDefinitionBuilder.genericBeanDefinition(clazz);
         for (Object arg : args) {
             beanDefinitionBuilder.addConstructorArgValue(arg);

@@ -6,6 +6,7 @@ import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
+import org.springframework.aot.AotDetector;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
@@ -179,6 +180,9 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
      * 对象实例化并注册到 Spring 上下文
      */
     private <L> L registerBean(String name, Class<L> clazz, Object... args) {
+        if (AotDetector.useGeneratedArtifacts()) {
+            return this.beanFactory.getBean(name, clazz);
+        }
         final BeanDefinitionBuilder beanDefinitionBuilder = BeanDefinitionBuilder.genericBeanDefinition(clazz);
         if (args != null) {
             for (Object arg : args) {
