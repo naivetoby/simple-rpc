@@ -115,7 +115,7 @@ public class RpcClientProxy<T> implements InvocationHandler {
         messageProperties.setContentType(MessageProperties.CONTENT_TYPE_BYTES);
         messageProperties.setCorrelationId(UUID.randomUUID().toString());
         if (this.rpcType == RpcType.DELAY) {
-            messageProperties.setDelay(data.getIntValue("delay", 0));
+            messageProperties.setDelayLong(data.getLongValue("delay", 0));
         }
         // Message
         final Message message = new Message(JSONB.toBytes(paramData), messageProperties);
