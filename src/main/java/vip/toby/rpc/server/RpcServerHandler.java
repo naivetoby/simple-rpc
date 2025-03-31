@@ -80,33 +80,31 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
         final Class<?> rpcServerClass = this.rpcServerBean.getClass();
         final FastClass fastClass = FastClass.create(rpcServerClass);
         for (Method targetMethod : rpcServerClass.getMethods()) {
-            if (targetMethod != null) {
-                final RpcServerMethod rpcServerMethod = AnnotationUtils.findAnnotation(targetMethod, RpcServerMethod.class);
-                if (rpcServerMethod != null) {
-                    String methodName = rpcServerMethod.value();
-                    if (StringUtils.isBlank(methodName)) {
-                        methodName = targetMethod.getName();
-                    }
-                    final String key = this.rpcType.getName() + "_" + this.rpcName + "_" + methodName;
-                    if (FAST_METHOD_MAP.containsKey(key)) {
-                        throw new RuntimeException("Class: " + rpcServerClass.getName() + ", Method: " + methodName + " 重复");
-                    }
-                    final FastMethod fastMethod = fastClass.getMethod(targetMethod);
-                    final Class<?> parameterType = getParameterType(targetMethod, fastMethod, rpcServerClass);
-                    if (parameterType.getAnnotation(RpcDTO.class) != null) {
-                        // FIXME 预热 FastJSON2 解析 和 Validator
-                        validator.validate(JSON.to(parameterType, parameterType.getDeclaredConstructor()
-                                .newInstance()), Default.class);
-                    } else {
-                        if (parameterType != JSONObject.class) {
-                            throw new RuntimeException("参数类型只能为 JSONObject 或者添加 @RpcDTO 注解, Class: " + rpcServerClass.getName() + ", Method: " + fastMethod.getName());
-                        }
-                    }
-                    FAST_METHOD_MAP.put(key, fastMethod);
-                    FAST_METHOD_PARAMETER_TYPE_MAP.put(key, parameterType);
-                    METHOD_ALLOW_DUPLICATE_MAP.put(key, rpcServerMethod.allowDuplicate());
-                    log.debug("{}-RpcServer-{}, Method: {} 已启动", this.rpcType.getName(), this.rpcName, methodName);
+            final RpcServerMethod rpcServerMethod = AnnotationUtils.findAnnotation(targetMethod, RpcServerMethod.class);
+            if (rpcServerMethod != null) {
+                String methodName = rpcServerMethod.value();
+                if (StringUtils.isBlank(methodName)) {
+                    methodName = targetMethod.getName();
                 }
+                final String key = this.rpcType.getName() + "_" + this.rpcName + "_" + methodName;
+                if (FAST_METHOD_MAP.containsKey(key)) {
+                    throw new RuntimeException("Class: " + rpcServerClass.getName() + ", Method: " + methodName + " 重复");
+                }
+                final FastMethod fastMethod = fastClass.getMethod(targetMethod);
+                final Class<?> parameterType = getParameterType(targetMethod, fastMethod, rpcServerClass);
+                if (parameterType.getAnnotation(RpcDTO.class) != null) {
+                    // FIXME 预热 FastJSON2 解析 和 Validator
+                    validator.validate(JSON.to(parameterType, parameterType.getDeclaredConstructor()
+                            .newInstance()), Default.class);
+                } else {
+                    if (parameterType != JSONObject.class) {
+                        throw new RuntimeException("参数类型只能为 JSONObject 或者添加 @RpcDTO 注解, Class: " + rpcServerClass.getName() + ", Method: " + fastMethod.getName());
+                    }
+                }
+                FAST_METHOD_MAP.put(key, fastMethod);
+                FAST_METHOD_PARAMETER_TYPE_MAP.put(key, parameterType);
+                METHOD_ALLOW_DUPLICATE_MAP.put(key, rpcServerMethod.allowDuplicate());
+                log.debug("{}-RpcServer-{}, Method: {} 已启动", this.rpcType.getName(), this.rpcName, methodName);
             }
         }
         log.info("{}-RpcServerHandler-{} 已启动", this.rpcType.getName(), this.rpcName);
