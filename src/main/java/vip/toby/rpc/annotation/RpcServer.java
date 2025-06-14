@@ -18,8 +18,7 @@ import java.lang.annotation.*;
 @Inherited
 public @interface RpcServer {
 
-    @AliasFor(annotation = Component.class)
-    String value();
+    @AliasFor(annotation = Component.class) String value();
 
     int xMessageTTL() default 500;
 

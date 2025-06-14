@@ -51,6 +51,7 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
     public T getObject() {
         RabbitTemplate sender;
         final RpcClient rpcClient = this.rpcClientInterface.getAnnotation(RpcClient.class);
+        assert rpcClient != null;
         final String rpcName = rpcClient.value();
         final RpcType rpcType = rpcClient.type();
         final int replyTimeout = rpcClient.replyTimeout();
@@ -91,7 +92,10 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
      * 实例化 ReplyMessageListenerContainer
      */
     private void replyMessageListenerContainer(
-            String rpcName, Queue queue, RabbitTemplate syncSender, ConnectionFactory connectionFactory
+            String rpcName,
+            Queue queue,
+            RabbitTemplate syncSender,
+            ConnectionFactory connectionFactory
     ) {
         final SimpleMessageListenerContainer replyMessageListenerContainer = registerBean(RpcType.SYNC.getName() + "-ReplyMessageListenerContainer-" + rpcName, SimpleMessageListenerContainer.class, connectionFactory);
         replyMessageListenerContainer.setQueueNames(queue.getName());
@@ -122,7 +126,10 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
      * 实例化 SyncSender
      */
     private RabbitTemplate syncSender(
-            String rpcName, Queue replyQueue, int replyTimeout, ConnectionFactory connectionFactory
+            String rpcName,
+            Queue replyQueue,
+            int replyTimeout,
+            ConnectionFactory connectionFactory
     ) {
         final SimpleRetryPolicy simpleRetryPolicy = new SimpleRetryPolicy();
         final RetryTemplate retryTemplate = new RetryTemplate();

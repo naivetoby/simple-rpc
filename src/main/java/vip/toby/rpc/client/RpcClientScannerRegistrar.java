@@ -30,7 +30,8 @@ public class RpcClientScannerRegistrar implements BeanFactoryAware, ImportBeanDe
 
     @Override
     public void registerBeanDefinitions(
-            @Nonnull AnnotationMetadata importingClassMetadata, @Nonnull BeanDefinitionRegistry registry
+            @Nonnull AnnotationMetadata importingClassMetadata,
+            @Nonnull BeanDefinitionRegistry registry
     ) {
 
         if (!AutoConfigurationPackages.has(this.beanFactory)) {

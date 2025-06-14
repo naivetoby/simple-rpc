@@ -33,8 +33,10 @@ public class RpcDeferredImportSelector implements DeferredImportSelector {
                 switch (rpcMode) {
                     case RPC_CLIENT_AUTO_SCANNER -> definitionRegistrars.add(RpcClientScannerRegistrar.class.getName());
                     case RPC_SERVER_AUTO_SCANNER -> definitionRegistrars.add(RpcServerPostProcessor.class.getName());
-                    case RPC_CLIENT_CONFIGURER -> definitionRegistrars.add(RpcClientConfigurerRegistrar.class.getName());
-                    default -> {}
+                    case RPC_CLIENT_CONFIGURER ->
+                            definitionRegistrars.add(RpcClientConfigurerRegistrar.class.getName());
+                    default -> {
+                    }
                 }
             }
         }

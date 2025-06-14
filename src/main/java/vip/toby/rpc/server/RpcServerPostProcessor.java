@@ -57,7 +57,8 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
 
     @Override
     public Object postProcessBeforeInitialization(
-            @Nonnull Object bean, @Nonnull String beanName
+            @Nonnull Object bean,
+            @Nonnull String beanName
     ) throws BeansException {
         return bean;
     }
@@ -133,7 +134,11 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
      * 实例化 SimpleMessageListenerContainer
      */
     private void messageListenerContainer(
-            String rpcName, RpcType rpcType, Queue queue, RpcServerHandler rpcServerHandler, int threadNum
+            String rpcName,
+            RpcType rpcType,
+            Queue queue,
+            RpcServerHandler rpcServerHandler,
+            int threadNum
     ) {
         final SimpleMessageListenerContainer messageListenerContainer = registerBean(this.applicationContext, rpcType.getName() + "-MessageListenerContainer-" + rpcName, SimpleMessageListenerContainer.class, this.connectionFactory);
         messageListenerContainer.setQueueNames(queue.getName());
@@ -213,7 +218,10 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
      * 对象实例化并注册到 Spring 上下文
      */
     private <T> T registerBean(
-            ConfigurableApplicationContext applicationContext, String name, Class<T> clazz, Object... args
+            ConfigurableApplicationContext applicationContext,
+            String name,
+            Class<T> clazz,
+            Object... args
     ) {
         final BeanDefinitionBuilder beanDefinitionBuilder = BeanDefinitionBuilder.genericBeanDefinition(clazz);
         for (Object arg : args) {
