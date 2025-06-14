@@ -17,7 +17,7 @@
     
     <groupId>com.demo</groupId>
     <artifactId>demo</artifactId>
-    <version>3.1.2</version>
+    <version>3.2.0</version>
 
     <dependencies>
         <dependency>
@@ -27,7 +27,7 @@
         <dependency>
             <groupId>vip.toby.rpc</groupId>
             <artifactId>simple-rpc</artifactId>
-            <version>3.1.2</version>
+            <version>3.2.0</version>
         </dependency>
     </dependencies>
 </project>
@@ -237,9 +237,6 @@ public class Application {
 
 ## Demo 源码
 https://github.com/naivetoby/simple-rpc-demo
-
-## 目前适配 JDK 17 版本
-启动时，需要添加启动参数 vm: --add-opens java.base/java.lang=ALL-UNNAMED
 
 ## application.yml 配置
 ```yaml
