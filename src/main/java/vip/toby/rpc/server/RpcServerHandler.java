@@ -107,17 +107,6 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
         log.info("{}-RpcServerHandler-{} 已启动", this.rpcType.getName(), this.rpcName);
     }
 
-    private static Class<?> getParameterType(Method method, Class<?> rpcServerClass) {
-        if (method.getReturnType() != R.class) {
-            throw new RuntimeException("返回类型只能为 ServerResult, Class: " + rpcServerClass.getName() + ", Method: " + method.getName());
-        }
-        final Class<?>[] parameterTypes = method.getParameterTypes();
-        if (parameterTypes.length != 1) {
-            throw new RuntimeException("只能包含唯一参数, Class: " + rpcServerClass.getName() + ", Method: " + method.getName());
-        }
-        return parameterTypes[0];
-    }
-
     @Override
     public void onMessage(Message message, Channel channel) throws IOException {
         RpcStatus rpcStatus = RpcStatus.FAIL;
@@ -147,7 +136,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                 // 异步执行任务
                 if (this.rpcType == RpcType.ASYNC || this.rpcType == RpcType.DELAY) {
                     final long start = System.currentTimeMillis();
-                    asyncExecute(command, data, messageProperties.getCorrelationId());
+                    executeMethod(command, data, messageProperties.getCorrelationId(), false);
                     final double offset = System.currentTimeMillis() - start;
                     log(paramData, command, offset);
                     // FIXME 延迟消息, 处理成功才 Ack
@@ -158,7 +147,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                 }
                 // 同步执行任务并返回结果
                 final long start = System.currentTimeMillis();
-                final Object serverResult = syncExecute(command, data, messageProperties.getCorrelationId());
+                final Object serverResult = executeMethod(command, data, messageProperties.getCorrelationId(), true);
                 if (serverResult != null) {
                     final long offset = System.currentTimeMillis() - start;
                     log(paramData, command, offset);
@@ -200,69 +189,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
         }
     }
 
-    private void log(JSONObject paramData, String command, double offset) {
-        if (this.xMessageTTL > 0 && offset > Math.floor(this.rpcProperties.getServerSlowCallTimePercent() * this.xMessageTTL)) {
-            log.info("Call Slowing! Duration: {}ms, {}-RpcServer-{}, Method: {}, Received: {}", offset, this.rpcType.getName(), this.rpcName, command, paramData);
-        } else {
-            log.info("Duration: {}ms, {}-RpcServer-{}, Method: {}, Received: {}", offset, this.rpcType.getName(), this.rpcName, command, paramData);
-        }
-    }
-
-    /**
-     * 异步调用
-     */
-    private void asyncExecute(String command, Object data, String correlationId) {
-        // 获取当前服务的反射方法调用
-        final String key = this.rpcType.getName() + "_" + this.rpcName + "_" + command;
-        // 通过缓存来优化性能
-        final Method method = METHOD_MAP.get(key);
-        if (method == null) {
-            log.error("Not Found! {}-RpcServer-{}, Method: {}", this.rpcType.getName(), this.rpcName, command);
-            return;
-        }
-        // 重复调用检测
-        if (this.rpcServerHandlerInterceptor != null && this.rpcServerHandlerInterceptor.rpcDuplicateHandle(key, correlationId)) {
-            log.warn("Call Duplicate! {}-RpcServer-{}, Method: {}", this.rpcType.getName(), this.rpcName, command);
-            return;
-        }
-        if (!METHOD_ALLOW_DUPLICATE_MAP.get(key) && this.rpcServerHandlerInterceptor != null && this.rpcServerHandlerInterceptor.duplicateHandle(key, data)) {
-            log.warn("Call Duplicate! {}-RpcServer-{}, Method: {}", this.rpcType.getName(), this.rpcName, command);
-            return;
-        }
-        // JavaBean 参数
-        final Class<?> parameterType = METHOD_PARAMETER_TYPE_MAP.get(key);
-        if (parameterType != JSONObject.class) {
-            data = JSON.to(parameterType, data);
-            // 参数校验
-            final Annotation[] annotations = method.getParameters()[0].getAnnotations();
-            for (Annotation ann : annotations) {
-                // 先尝试获取 @Validated 注解
-                final Validated validatedAnn = AnnotationUtils.getAnnotation(ann, Validated.class);
-                // 如果直接标注了 @Validated，那么直接开启校验
-                // 如果没有，那么判断参数前是否有 Valid 开头的注解
-                if (validatedAnn != null || ann.annotationType().getSimpleName().startsWith("Valid")) {
-                    final Class<?>[] validationHints = validated(ann, validatedAnn);
-                    // 执行校验
-                    final Set<ConstraintViolation<Object>> constraintViolations = validator.validate(data, validationHints);
-                    if (!constraintViolations.isEmpty()) {
-                        // 校验不合格处理
-                        final List<String> tipList = new ArrayList<>();
-                        constraintViolations.forEach(cv -> tipList.add(cv.getMessage()));
-                        log.error("Param Invalid! Detail: {}, {}-RpcServer-{}, Method: {}", StringUtils.join(tipList, ", "), this.rpcType.getName(), this.rpcName, command);
-                        return;
-                    }
-                    break;
-                }
-            }
-        }
-        // 使用 ReflectionUtils 调用方法
-        ReflectionUtils.invokeMethod(method, this.rpcServerBean, data);
-    }
-
-    /**
-     * 同步调用
-     */
-    private Object syncExecute(String command, Object data, String correlationId) {
+    private Object executeMethod(String command, Object data, String correlationId, boolean isSync) {
         // 获取当前服务的反射方法调用
         final String key = this.rpcType.getName() + "_" + this.rpcName + "_" + command;
         // 通过缓存来优化性能
@@ -274,11 +201,11 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
         // 重复调用检测
         if (this.rpcServerHandlerInterceptor != null && this.rpcServerHandlerInterceptor.rpcDuplicateHandle(key, correlationId)) {
             log.warn("Call Duplicate! {}-RpcServer-{}, Method: {}", this.rpcType.getName(), this.rpcName, command);
-            return R.failMessage("Call Duplicate").errorCode(-1);
+            return isSync ? R.failMessage("Call Duplicate").errorCode(-1) : null;
         }
         if (!METHOD_ALLOW_DUPLICATE_MAP.get(key) && this.rpcServerHandlerInterceptor != null && this.rpcServerHandlerInterceptor.duplicateHandle(key, data)) {
             log.warn("Call Duplicate! {}-RpcServer-{}, Method: {}", this.rpcType.getName(), this.rpcName, command);
-            return R.failMessage("Call Duplicate").errorCode(-1);
+            return isSync ? R.failMessage("Call Duplicate").errorCode(-1) : null;
         }
         // JavaBean 参数
         final Class<?> parameterType = METHOD_PARAMETER_TYPE_MAP.get(key);
@@ -299,8 +226,9 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                         // 校验不合格处理
                         final List<String> tipList = new ArrayList<>();
                         constraintViolations.forEach(cv -> tipList.add(cv.getMessage()));
-                        log.error("Param Invalid! Detail: {}, {}-RpcServer-{}, Method: {}", StringUtils.join(tipList, ", "), this.rpcType.getName(), this.rpcName, command);
-                        return R.failMessage(StringUtils.join(tipList, ", "));
+                        final String details = StringUtils.join(tipList, ", ");
+                        log.error("Param Invalid! Detail: {}, {}-RpcServer-{}, Method: {}", details, this.rpcType.getName(), this.rpcName, command);
+                        return isSync ? R.failMessage(details) : null;
                     }
                     break;
                 }
@@ -316,6 +244,25 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
             hints = Default.class;
         }
         return (hints instanceof Class<?>[] ? (Class<?>[]) hints : new Class<?>[]{(Class<?>) hints});
+    }
+
+    private static Class<?> getParameterType(Method method, Class<?> rpcServerClass) {
+        if (method.getReturnType() != R.class) {
+            throw new RuntimeException("返回类型只能为 ServerResult, Class: " + rpcServerClass.getName() + ", Method: " + method.getName());
+        }
+        final Class<?>[] parameterTypes = method.getParameterTypes();
+        if (parameterTypes.length != 1) {
+            throw new RuntimeException("只能包含唯一参数, Class: " + rpcServerClass.getName() + ", Method: " + method.getName());
+        }
+        return parameterTypes[0];
+    }
+
+    private void log(JSONObject paramData, String command, double offset) {
+        if (this.xMessageTTL > 0 && offset > Math.floor(this.rpcProperties.getServerSlowCallTimePercent() * this.xMessageTTL)) {
+            log.info("Call Slowing! Duration: {}ms, {}-RpcServer-{}, Method: {}, Received: {}", offset, this.rpcType.getName(), this.rpcName, command, paramData);
+        } else {
+            log.info("Duration: {}ms, {}-RpcServer-{}, Method: {}, Received: {}", offset, this.rpcType.getName(), this.rpcName, command, paramData);
+        }
     }
 
 }
