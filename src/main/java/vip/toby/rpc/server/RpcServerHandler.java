@@ -14,9 +14,8 @@ import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.listener.api.ChannelAwareMessageListener;
 import org.springframework.beans.factory.InitializingBean;
-import org.springframework.cglib.reflect.FastClass;
-import org.springframework.cglib.reflect.FastMethod;
 import org.springframework.core.annotation.AnnotationUtils;
+import org.springframework.util.ReflectionUtils;
 import org.springframework.validation.annotation.Validated;
 import vip.toby.rpc.annotation.RpcDTO;
 import vip.toby.rpc.annotation.RpcServerMethod;
@@ -27,7 +26,6 @@ import vip.toby.rpc.properties.RpcProperties;
 
 import java.io.IOException;
 import java.lang.annotation.Annotation;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -44,8 +42,8 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 public class RpcServerHandler implements ChannelAwareMessageListener, InitializingBean {
 
-    private final static Map<String, FastMethod> FAST_METHOD_MAP = new ConcurrentHashMap<>();
-    private final static Map<String, Class<?>> FAST_METHOD_PARAMETER_TYPE_MAP = new ConcurrentHashMap<>();
+    private final static Map<String, Method> METHOD_MAP = new ConcurrentHashMap<>();
+    private final static Map<String, Class<?>> METHOD_PARAMETER_TYPE_MAP = new ConcurrentHashMap<>();
     private final static Map<String, Boolean> METHOD_ALLOW_DUPLICATE_MAP = new ConcurrentHashMap<>();
 
     private final Object rpcServerBean;
@@ -75,34 +73,33 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
     }
 
     @Override
-    public void afterPropertiesSet() throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
+    public void afterPropertiesSet() {
         // 初始化所有接口
         final Class<?> rpcServerClass = this.rpcServerBean.getClass();
-        final FastClass fastClass = FastClass.create(rpcServerClass);
-        for (Method targetMethod : rpcServerClass.getMethods()) {
-            final RpcServerMethod rpcServerMethod = AnnotationUtils.findAnnotation(targetMethod, RpcServerMethod.class);
+        for (Method method : rpcServerClass.getMethods()) {
+            final RpcServerMethod rpcServerMethod = AnnotationUtils.findAnnotation(method, RpcServerMethod.class);
             if (rpcServerMethod != null) {
                 String methodName = rpcServerMethod.value();
                 if (StringUtils.isBlank(methodName)) {
-                    methodName = targetMethod.getName();
+                    methodName = method.getName();
                 }
                 final String key = this.rpcType.getName() + "_" + this.rpcName + "_" + methodName;
-                if (FAST_METHOD_MAP.containsKey(key)) {
+                if (METHOD_MAP.containsKey(key)) {
                     throw new RuntimeException("Class: " + rpcServerClass.getName() + ", Method: " + methodName + " 重复");
                 }
-                final FastMethod fastMethod = fastClass.getMethod(targetMethod);
-                final Class<?> parameterType = getParameterType(targetMethod, fastMethod, rpcServerClass);
+                // 确保方法可访问
+                ReflectionUtils.makeAccessible(method);
+                final Class<?> parameterType = getParameterType(method, rpcServerClass);
                 if (parameterType.getAnnotation(RpcDTO.class) != null) {
                     // FIXME 预热 FastJSON2 解析 和 Validator
-                    validator.validate(JSON.to(parameterType, parameterType.getDeclaredConstructor()
-                            .newInstance()), Default.class);
+                    validator.validate(JSON.to(parameterType, new JSONObject()), Default.class);
                 } else {
                     if (parameterType != JSONObject.class) {
-                        throw new RuntimeException("参数类型只能为 JSONObject 或者添加 @RpcDTO 注解, Class: " + rpcServerClass.getName() + ", Method: " + fastMethod.getName());
+                        throw new RuntimeException("参数类型只能为 JSONObject 或者添加 @RpcDTO 注解, Class: " + rpcServerClass.getName() + ", Method: " + method.getName());
                     }
                 }
-                FAST_METHOD_MAP.put(key, fastMethod);
-                FAST_METHOD_PARAMETER_TYPE_MAP.put(key, parameterType);
+                METHOD_MAP.put(key, method);
+                METHOD_PARAMETER_TYPE_MAP.put(key, parameterType);
                 METHOD_ALLOW_DUPLICATE_MAP.put(key, rpcServerMethod.allowDuplicate());
                 log.debug("{}-RpcServer-{}, Method: {} 已启动", this.rpcType.getName(), this.rpcName, methodName);
             }
@@ -110,16 +107,13 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
         log.info("{}-RpcServerHandler-{} 已启动", this.rpcType.getName(), this.rpcName);
     }
 
-    private static Class<?> getParameterType(Method targetMethod, FastMethod fastMethod, Class<?> rpcServerClass) {
-        if (fastMethod == null) {
-            throw new RuntimeException("Class: " + rpcServerClass.getName() + ", Method: " + targetMethod.getName() + " Invoke Exception");
+    private static Class<?> getParameterType(Method method, Class<?> rpcServerClass) {
+        if (method.getReturnType() != R.class) {
+            throw new RuntimeException("返回类型只能为 ServerResult, Class: " + rpcServerClass.getName() + ", Method: " + method.getName());
         }
-        if (fastMethod.getReturnType() != R.class) {
-            throw new RuntimeException("返回类型只能为 ServerResult, Class: " + rpcServerClass.getName() + ", Method: " + fastMethod.getName());
-        }
-        final Class<?>[] parameterTypes = fastMethod.getParameterTypes();
-        if (parameterTypes == null || parameterTypes.length != 1) {
-            throw new RuntimeException("只能包含唯一参数, Class: " + rpcServerClass.getName() + ", Method: " + fastMethod.getName());
+        final Class<?>[] parameterTypes = method.getParameterTypes();
+        if (parameterTypes.length != 1) {
+            throw new RuntimeException("只能包含唯一参数, Class: " + rpcServerClass.getName() + ", Method: " + method.getName());
         }
         return parameterTypes[0];
     }
@@ -174,16 +168,11 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                 } else {
                     rpcStatus = RpcStatus.NOT_FOUND;
                 }
-            } catch (InvocationTargetException e) {
-                // 获取目标异常
-                final Throwable t = e.getTargetException();
-                log.error("Method Invoke Target Exception! Received: {}", paramData);
-                log.error(t.getMessage(), t);
             } catch (Exception e) {
                 log.error("Method Invoke Exception! Received: {}", paramData);
                 log.error(e.getMessage(), e);
             }
-            // 异步执行任务
+            // 异步或者延迟任务
             if (this.rpcType == RpcType.ASYNC || this.rpcType == RpcType.DELAY) {
                 return;
             }
@@ -222,12 +211,12 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
     /**
      * 异步调用
      */
-    private void asyncExecute(String command, Object data, String correlationId) throws InvocationTargetException {
+    private void asyncExecute(String command, Object data, String correlationId) {
         // 获取当前服务的反射方法调用
         final String key = this.rpcType.getName() + "_" + this.rpcName + "_" + command;
         // 通过缓存来优化性能
-        final FastMethod fastMethod = FAST_METHOD_MAP.get(key);
-        if (fastMethod == null) {
+        final Method method = METHOD_MAP.get(key);
+        if (method == null) {
             log.error("Not Found! {}-RpcServer-{}, Method: {}", this.rpcType.getName(), this.rpcName, command);
             return;
         }
@@ -240,12 +229,12 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
             log.warn("Call Duplicate! {}-RpcServer-{}, Method: {}", this.rpcType.getName(), this.rpcName, command);
             return;
         }
-        final Class<?> parameterType = FAST_METHOD_PARAMETER_TYPE_MAP.get(key);
         // JavaBean 参数
+        final Class<?> parameterType = METHOD_PARAMETER_TYPE_MAP.get(key);
         if (parameterType != JSONObject.class) {
             data = JSON.to(parameterType, data);
-            // JavaBean 参数是否需要校验
-            final Annotation[] annotations = fastMethod.getJavaMethod().getParameters()[0].getAnnotations();
+            // 参数校验
+            final Annotation[] annotations = method.getParameters()[0].getAnnotations();
             for (Annotation ann : annotations) {
                 // 先尝试获取 @Validated 注解
                 final Validated validatedAnn = AnnotationUtils.getAnnotation(ann, Validated.class);
@@ -254,11 +243,11 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                 if (validatedAnn != null || ann.annotationType().getSimpleName().startsWith("Valid")) {
                     final Class<?>[] validationHints = validated(ann, validatedAnn);
                     // 执行校验
-                    final Set<ConstraintViolation<Object>> constraintViolations = validator.validate(validationHints);
+                    final Set<ConstraintViolation<Object>> constraintViolations = validator.validate(data, validationHints);
                     if (!constraintViolations.isEmpty()) {
                         // 校验不合格处理
                         final List<String> tipList = new ArrayList<>();
-                        constraintViolations.forEach(constraintViolationImpl -> tipList.add(constraintViolationImpl.getMessage()));
+                        constraintViolations.forEach(cv -> tipList.add(cv.getMessage()));
                         log.error("Param Invalid! Detail: {}, {}-RpcServer-{}, Method: {}", StringUtils.join(tipList, ", "), this.rpcType.getName(), this.rpcName, command);
                         return;
                     }
@@ -266,19 +255,19 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                 }
             }
         }
-        // 通过发射来调用方法
-        fastMethod.invoke(this.rpcServerBean, new Object[]{data});
+        // 使用 ReflectionUtils 调用方法
+        ReflectionUtils.invokeMethod(method, this.rpcServerBean, data);
     }
 
     /**
      * 同步调用
      */
-    private Object syncExecute(String command, Object data, String correlationId) throws InvocationTargetException {
+    private Object syncExecute(String command, Object data, String correlationId) {
         // 获取当前服务的反射方法调用
         final String key = this.rpcType.getName() + "_" + this.rpcName + "_" + command;
         // 通过缓存来优化性能
-        final FastMethod fastMethod = FAST_METHOD_MAP.get(key);
-        if (fastMethod == null) {
+        final Method method = METHOD_MAP.get(key);
+        if (method == null) {
             log.error("Not Found! {}-RpcServer-{}, Method: {}", this.rpcType.getName(), this.rpcName, command);
             return null;
         }
@@ -291,25 +280,25 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
             log.warn("Call Duplicate! {}-RpcServer-{}, Method: {}", this.rpcType.getName(), this.rpcName, command);
             return R.failMessage("Call Duplicate").errorCode(-1);
         }
-        final Class<?> parameterType = FAST_METHOD_PARAMETER_TYPE_MAP.get(key);
         // JavaBean 参数
+        final Class<?> parameterType = METHOD_PARAMETER_TYPE_MAP.get(key);
         if (parameterType != JSONObject.class) {
             data = JSON.to(parameterType, data);
-            // JavaBean 参数是否需要校验
-            final Annotation[] annotations = fastMethod.getJavaMethod().getParameters()[0].getAnnotations();
+            // 参数校验
+            final Annotation[] annotations = method.getParameters()[0].getAnnotations();
             for (Annotation ann : annotations) {
-                // 先尝试获取@Validated注解
+                // 先尝试获取 @Validated 注解
                 final Validated validatedAnn = AnnotationUtils.getAnnotation(ann, Validated.class);
-                // 如果直接标注了@Validated，那么直接开启校验
-                // 如果没有，那么判断参数前是否有Valid起头的注解
+                // 如果直接标注了 @Validated，那么直接开启校验
+                // 如果没有，那么判断参数前是否有 Valid 开头的注解
                 if (validatedAnn != null || ann.annotationType().getSimpleName().startsWith("Valid")) {
                     final Class<?>[] validationHints = validated(ann, validatedAnn);
-                    //执行校验
+                    // 执行校验
                     final Set<ConstraintViolation<Object>> constraintViolations = validator.validate(data, validationHints);
                     if (!constraintViolations.isEmpty()) {
                         // 校验不合格处理
                         final List<String> tipList = new ArrayList<>();
-                        constraintViolations.forEach(constraintViolationImpl -> tipList.add(constraintViolationImpl.getMessage()));
+                        constraintViolations.forEach(cv -> tipList.add(cv.getMessage()));
                         log.error("Param Invalid! Detail: {}, {}-RpcServer-{}, Method: {}", StringUtils.join(tipList, ", "), this.rpcType.getName(), this.rpcName, command);
                         return R.failMessage(StringUtils.join(tipList, ", "));
                     }
@@ -317,8 +306,8 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                 }
             }
         }
-        // 通过发射来调用方法
-        return fastMethod.invoke(this.rpcServerBean, new Object[]{data});
+        // 使用 ReflectionUtils 调用方法
+        return ReflectionUtils.invokeMethod(method, this.rpcServerBean, data);
     }
 
     private Class<?>[] validated(Annotation ann, Validated validatedAnn) {
