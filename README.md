@@ -17,7 +17,7 @@
     
     <groupId>com.demo</groupId>
     <artifactId>demo</artifactId>
-    <version>3.2.0</version>
+    <version>3.2.1-SNAPSHOT</version>
 
     <dependencies>
         <dependency>
@@ -27,7 +27,7 @@
         <dependency>
             <groupId>vip.toby.rpc</groupId>
             <artifactId>simple-rpc</artifactId>
-            <version>3.2.0</version>
+            <version>3.2.1-SNAPSHOT</version>
         </dependency>
     </dependencies>
 </project>
