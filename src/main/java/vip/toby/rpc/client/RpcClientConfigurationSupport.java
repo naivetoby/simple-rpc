@@ -54,7 +54,7 @@ public class RpcClientConfigurationSupport implements BeanDefinitionRegistryPost
         if (beanClassName != null) {
             final BeanDefinitionRegistry beanDefinitionRegistry = (BeanDefinitionRegistry) this.applicationContext;
             // 获取真实接口 Class, 并作为构造方法的参数
-            rpcClientBeanDefinition.getConstructorArgumentValues().addGenericArgumentValue(beanClassName);
+            rpcClientBeanDefinition.getConstructorArgumentValues().addGenericArgumentValue(clazz);
             // 修改类为 RpcClientProxyFactory
             rpcClientBeanDefinition.setBeanClass(RpcClientProxyFactory.class);
             // 采用按照类型注入的方式
