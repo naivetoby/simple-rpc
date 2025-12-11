@@ -13,8 +13,8 @@ import org.springframework.beans.factory.FactoryBean;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
-import org.springframework.retry.policy.SimpleRetryPolicy;
-import org.springframework.retry.support.RetryTemplate;
+import org.springframework.core.retry.RetryPolicy;
+import org.springframework.core.retry.RetryTemplate;
 import vip.toby.rpc.annotation.RpcClient;
 import vip.toby.rpc.entity.RpcType;
 import vip.toby.rpc.properties.RpcProperties;
@@ -131,9 +131,9 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
             int replyTimeout,
             ConnectionFactory connectionFactory
     ) {
-        final SimpleRetryPolicy simpleRetryPolicy = new SimpleRetryPolicy();
+        final RetryPolicy defaultRetryPolicy = RetryPolicy.withDefaults();
         final RetryTemplate retryTemplate = new RetryTemplate();
-        retryTemplate.setRetryPolicy(simpleRetryPolicy);
+        retryTemplate.setRetryPolicy(defaultRetryPolicy);
         final RabbitTemplate syncSender = registerBean(RpcType.SYNC.getName() + "-Sender-" + rpcName, RabbitTemplate.class, connectionFactory);
         syncSender.setDefaultReceiveQueue(rpcName);
         syncSender.setRoutingKey(rpcName);

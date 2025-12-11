@@ -10,6 +10,7 @@ import jakarta.validation.Validator;
 import jakarta.validation.groups.Default;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.jspecify.annotations.NonNull;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.listener.api.ChannelAwareMessageListener;
@@ -28,10 +29,7 @@ import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -108,7 +106,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
     }
 
     @Override
-    public void onMessage(Message message, Channel channel) throws IOException {
+    public void onMessage(@NonNull Message message, Channel channel) throws IOException {
         RpcStatus rpcStatus = RpcStatus.FAIL;
         MessageProperties messageProperties = null;
         JSONObject paramData = null;
@@ -173,7 +171,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                     .contentType(messageProperties.getContentType())
                     .build();
             // 反馈消息
-            channel.basicPublish(messageProperties.getReplyToAddress()
+            channel.basicPublish(Objects.requireNonNull(messageProperties.getReplyToAddress())
                     .getExchangeName(), messageProperties.getReplyToAddress()
                     .getRoutingKey(), replyProps, JSONB.toBytes(resultJson));
         } catch (Exception e) {
