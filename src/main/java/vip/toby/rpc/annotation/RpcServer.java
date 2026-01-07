@@ -24,6 +24,6 @@ public @interface RpcServer {
 
     int threadNum() default 10;
 
-    RpcType[] type() default {RpcType.SYNC, RpcType.ASYNC};
+    RpcType[] type() default RpcType.SYNC;
 
 }
