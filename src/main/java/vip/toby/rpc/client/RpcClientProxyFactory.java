@@ -1,5 +1,6 @@
 package vip.toby.rpc.client;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.Queue;
@@ -29,6 +30,7 @@ import java.util.UUID;
  *
  * @author toby
  */
+@Slf4j
 public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAware {
 
     private BeanFactory beanFactory;
@@ -100,6 +102,16 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
         final SimpleMessageListenerContainer replyMessageListenerContainer = registerBean(RpcType.SYNC.getName() + "-ReplyMessageListenerContainer-" + rpcName, SimpleMessageListenerContainer.class, connectionFactory);
         replyMessageListenerContainer.setQueueNames(queue.getName());
         replyMessageListenerContainer.setMessageListener(syncSender);
+        replyMessageListenerContainer.setErrorHandler(t -> {
+            final Throwable cause = t.getCause();
+            if (t instanceof org.springframework.amqp.rabbit.support.ListenerExecutionFailedException && cause instanceof org.springframework.amqp.AmqpRejectAndDontRequeueException) {
+                if (cause.getMessage() != null && cause.getMessage().contains("Reply received after timeout")) {
+                    // log.debug("RPC Reply Listener timeout for rpc: {}", rpcName);
+                    return;
+                }
+            }
+            log.error("RPC Reply Listener failed for rpc: {}", rpcName, t);
+        });
     }
 
     /**
