@@ -78,7 +78,7 @@ public class RpcClientProxy<T> implements InvocationHandler {
         if (StringUtils.isBlank(methodName)) {
             methodName = method.getName();
         }
-        // 组装data
+        // 组装 data
         JSONObject data = new JSONObject();
         final Parameter[] parameters = method.getParameters();
         if (this.rpcType == RpcType.DELAY) {
