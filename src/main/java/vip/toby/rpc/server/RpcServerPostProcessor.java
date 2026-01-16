@@ -84,13 +84,13 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
                 case SYNC -> {
                     final Map<String, Object> params = new HashMap<>(1);
                     params.put("x-message-ttl", rpcServer.xMessageTTL());
-                    final Queue syncQueue = queue(rpcName, rpcType, params);
+                    final Queue syncQueue = queue(rpcName, rpcType, true, params);
                     binding(rpcName, rpcType, syncQueue);
                     final RpcServerHandler syncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, getValidator(), getRpcProperties(), rpcServer.xMessageTTL(), rpcServerHandlerInterceptor);
                     messageListenerContainer(rpcName, rpcType, syncQueue, syncServerHandler, rpcServer.threadNum());
                 }
                 case ASYNC, DELAY -> {
-                    final Queue asyncQueue = queue(rpcName, rpcType, null);
+                    final Queue asyncQueue = queue(rpcName, rpcType, false, null);
                     binding(rpcName, rpcType, asyncQueue);
                     final RpcServerHandler asyncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, getValidator(), getRpcProperties(), 0, rpcServerHandlerInterceptor);
                     messageListenerContainer(rpcName, rpcType, asyncQueue, asyncServerHandler, rpcServer.threadNum());
@@ -104,8 +104,8 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
     /**
      * 实例化 Queue
      */
-    private Queue queue(String rpcName, RpcType rpcType, Map<String, Object> params) {
-        return registerBean(this.applicationContext, rpcType.getName() + "-Queue-" + rpcName, Queue.class, rpcType == RpcType.DELAY ? (rpcName + ".delay") : (rpcType == RpcType.ASYNC ? (rpcName + ".async") : rpcName), rpcType == RpcType.ASYNC || rpcType == RpcType.DELAY, false, false, params);
+    private Queue queue(String rpcName, RpcType rpcType, boolean autoDelete, Map<String, Object> params) {
+        return registerBean(this.applicationContext, rpcType.getName() + "-Queue-" + rpcName, Queue.class, rpcType == RpcType.DELAY ? (rpcName + ".delay") : (rpcType == RpcType.ASYNC ? (rpcName + ".async") : rpcName), rpcType == RpcType.ASYNC || rpcType == RpcType.DELAY, false, autoDelete, params);
     }
 
     /**
