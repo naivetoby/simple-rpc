@@ -18,7 +18,7 @@ public @interface RpcClient {
 
     String value();
 
-    int replyTimeout() default 1000;
+    int replyTimeout() default 3000;
 
     RpcType type() default RpcType.SYNC;
 

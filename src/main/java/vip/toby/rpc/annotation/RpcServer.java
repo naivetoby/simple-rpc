@@ -20,7 +20,7 @@ public @interface RpcServer {
 
     @AliasFor(annotation = Component.class) String value();
 
-    int xMessageTTL() default 500;
+    int xMessageTTL() default 1500;
 
     int threadNum() default 10;
 
