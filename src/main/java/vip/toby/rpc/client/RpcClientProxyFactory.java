@@ -94,7 +94,7 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
         final RetryPolicy defaultRetryPolicy = RetryPolicy.withDefaults();
         final RetryTemplate retryTemplate = new RetryTemplate();
         retryTemplate.setRetryPolicy(defaultRetryPolicy);
-        final RabbitTemplate syncSender = registerBean(RpcType.SYNC.getName() + "-Sender-" + rpcName, RabbitTemplate.class, connectionFactory);
+        final RabbitTemplate syncSender = registerBean(RpcType.SYNC.getName() + "-Sender-" + rpcName, RpcQuietRabbitTemplate.class, connectionFactory);
         syncSender.setUseDirectReplyToContainer(true);
         syncSender.setRoutingKey(rpcName);
         syncSender.setReplyTimeout(replyTimeout);
