@@ -1,12 +1,9 @@
 package vip.toby.rpc.client;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.DirectExchange;
-import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
@@ -22,8 +19,6 @@ import vip.toby.rpc.properties.RpcProperties;
 
 import javax.annotation.Nonnull;
 import java.lang.reflect.Proxy;
-import java.util.Collections;
-import java.util.UUID;
 
 /**
  * RpcClientProxyFactory
@@ -58,11 +53,7 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
         final RpcType rpcType = rpcClient.type();
         final int replyTimeout = rpcClient.replyTimeout();
         if (rpcType == RpcType.SYNC) {
-            final Queue replyQueue = replyQueue(rpcName, UUID.randomUUID().toString());
-            replyBinding(rpcName, replyQueue);
-            final RabbitTemplate syncSender = syncSender(rpcName, replyQueue, replyTimeout, getConnectionFactory());
-            replyMessageListenerContainer(rpcName, replyQueue, syncSender, getConnectionFactory());
-            sender = syncSender;
+            sender = syncSender(rpcName, replyTimeout, getConnectionFactory());
         } else if (rpcType == RpcType.ASYNC) {
             sender = asyncSender(rpcName, getConnectionFactory());
         } else {
@@ -74,44 +65,6 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
     @Override
     public Class<T> getObjectType() {
         return this.rpcClientInterface;
-    }
-
-    /**
-     * 实例化 replyQueue
-     */
-    private Queue replyQueue(String rpcName, String rabbitClientId) {
-        return registerBean(RpcType.SYNC.getName() + "-ReplyQueue-" + rpcName, Queue.class, rpcName + ".reply." + rabbitClientId, false, false, true);
-    }
-
-    /**
-     * 实例化 ReplyBinding
-     */
-    private void replyBinding(String rpcName, Queue queue) {
-        registerBean(RpcType.SYNC.getName() + "-ReplyBinding-" + rpcName, Binding.class, queue.getName(), Binding.DestinationType.QUEUE, getSyncReplyDirectExchange().getName(), queue.getName(), Collections.<String, Object>emptyMap());
-    }
-
-    /**
-     * 实例化 ReplyMessageListenerContainer
-     */
-    private void replyMessageListenerContainer(
-            String rpcName,
-            Queue queue,
-            RabbitTemplate syncSender,
-            ConnectionFactory connectionFactory
-    ) {
-        final SimpleMessageListenerContainer replyMessageListenerContainer = registerBean(RpcType.SYNC.getName() + "-ReplyMessageListenerContainer-" + rpcName, SimpleMessageListenerContainer.class, connectionFactory);
-        replyMessageListenerContainer.setQueueNames(queue.getName());
-        replyMessageListenerContainer.setMessageListener(syncSender);
-        replyMessageListenerContainer.setErrorHandler(t -> {
-            final Throwable cause = t.getCause();
-            if (t instanceof org.springframework.amqp.rabbit.support.ListenerExecutionFailedException && cause instanceof org.springframework.amqp.AmqpRejectAndDontRequeueException) {
-                if (cause.getMessage() != null && cause.getMessage().contains("Reply received after timeout")) {
-                    // log.debug("RPC Reply Listener timeout for rpc: {}", rpcName);
-                    return;
-                }
-            }
-            log.error("RPC Reply Listener failed for rpc: {}", rpcName, t);
-        });
     }
 
     /**
@@ -137,19 +90,13 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
     /**
      * 实例化 SyncSender
      */
-    private RabbitTemplate syncSender(
-            String rpcName,
-            Queue replyQueue,
-            int replyTimeout,
-            ConnectionFactory connectionFactory
-    ) {
+    private RabbitTemplate syncSender(String rpcName, int replyTimeout, ConnectionFactory connectionFactory) {
         final RetryPolicy defaultRetryPolicy = RetryPolicy.withDefaults();
         final RetryTemplate retryTemplate = new RetryTemplate();
         retryTemplate.setRetryPolicy(defaultRetryPolicy);
         final RabbitTemplate syncSender = registerBean(RpcType.SYNC.getName() + "-Sender-" + rpcName, RabbitTemplate.class, connectionFactory);
-        syncSender.setDefaultReceiveQueue(rpcName);
+        syncSender.setUseDirectReplyToContainer(true);
         syncSender.setRoutingKey(rpcName);
-        syncSender.setReplyAddress(replyQueue.getName());
         syncSender.setReplyTimeout(replyTimeout);
         syncSender.setRetryTemplate(retryTemplate);
         syncSender.setUserCorrelationId(true);
@@ -178,20 +125,6 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
             }
         }
         return this.rpcProperties;
-    }
-
-    /**
-     * 实例化 SyncReplyDirectExchange
-     */
-    private DirectExchange getSyncReplyDirectExchange() {
-        if (this.syncReplyDirectExchange == null) {
-            if (this.beanFactory.containsBean("syncReplyDirectExchange")) {
-                this.syncReplyDirectExchange = this.beanFactory.getBean("syncReplyDirectExchange", DirectExchange.class);
-            } else {
-                this.syncReplyDirectExchange = registerBean("syncReplyDirectExchange", DirectExchange.class, "simple.rpc.sync.reply", true, false);
-            }
-        }
-        return this.syncReplyDirectExchange;
     }
 
     /**
