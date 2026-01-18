@@ -17,7 +17,7 @@
     
     <groupId>com.demo</groupId>
     <artifactId>demo</artifactId>
-    <version>3.4.1</version>
+    <version>3.4.2</version>
 
     <dependencies>
         <dependency>
@@ -27,7 +27,7 @@
         <dependency>
             <groupId>vip.toby.rpc</groupId>
             <artifactId>simple-rpc</artifactId>
-            <version>3.4.1</version>
+            <version>3.4.2</version>
         </dependency>
     </dependencies>
 </project>
@@ -79,7 +79,7 @@ public class RpcClientConfig implements RpcClientConfigurer {
 
 ## RpcServer Demo
 ```java
-@RpcServer(value = "rpc-queue-name", type = {RpcType.SYNC, RpcType.ASYNC}, xMessageTTL = 1000, threadNum = 1)
+@RpcServer(name = "rpc-queue-name", type = {RpcType.SYNC, RpcType.ASYNC}, xMessageTTL = 1000, threadNum = 1)
 public class Server {
 
     @RpcServerMethod
@@ -96,7 +96,7 @@ public class Server {
 
 }
 
-@RpcServer(value = "rpc-queue-name-other", type = RpcType.SYNC)
+@RpcServer(name = "rpc-queue-name-other", type = RpcType.SYNC)
 public class OtherServer {
 
     @RpcServerMethod
@@ -108,7 +108,7 @@ public class OtherServer {
 
 }
 
-@RpcServer(value = "delay-plus", type = RpcType.DELAY)
+@RpcServer(name = "delay-plus", type = RpcType.DELAY)
 @Slf4j
 public class DelayPlusServer {
 
@@ -128,7 +128,7 @@ public class DelayPlusServer {
 
 ## RpcClient Demo
 ```java
-@RpcClient(value = "rpc-queue-name", type = RpcType.SYNC)
+@RpcClient(name = "rpc-queue-name", type = RpcType.SYNC)
 public interface SyncClient {
 
     @RpcClientMethod
@@ -139,7 +139,7 @@ public interface SyncClient {
 
 }
 
-@RpcClient(value = "rpc-queue-name", type = RpcType.ASYNC)
+@RpcClient(name = "rpc-queue-name", type = RpcType.ASYNC)
 public interface AsyncClient {
 
     @RpcClientMethod
@@ -150,7 +150,7 @@ public interface AsyncClient {
 
 }
 
-@RpcClient(value = "rpc-queue-name-other", type = RpcType.SYNC)
+@RpcClient(name = "rpc-queue-name-other", type = RpcType.SYNC)
 public interface OtherSyncClient {
 
     @RpcClientMethod
@@ -158,7 +158,7 @@ public interface OtherSyncClient {
 
 }
 
-@RpcClient(value = "delay-plus", type = RpcType.DELAY)
+@RpcClient(name = "delay-plus", type = RpcType.DELAY)
 public interface DelayClient {
 
     @RpcClientMethod

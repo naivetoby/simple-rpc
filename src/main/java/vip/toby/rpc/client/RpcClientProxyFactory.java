@@ -16,6 +16,7 @@ import org.springframework.core.retry.RetryTemplate;
 import vip.toby.rpc.annotation.RpcClient;
 import vip.toby.rpc.entity.RpcType;
 import vip.toby.rpc.properties.RpcProperties;
+import vip.toby.rpc.util.RpcUtil;
 
 import javax.annotation.Nonnull;
 import java.lang.reflect.Proxy;
@@ -49,8 +50,8 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
         RabbitTemplate sender;
         final RpcClient rpcClient = this.rpcClientInterface.getAnnotation(RpcClient.class);
         assert rpcClient != null;
-        final String rpcName = rpcClient.value();
         final RpcType rpcType = rpcClient.type();
+        final String rpcName = RpcUtil.getRpcName(rpcType, rpcClient.name());
         final int replyTimeout = rpcClient.replyTimeout();
         if (rpcType == RpcType.SYNC) {
             sender = syncSender(rpcName, replyTimeout, getConnectionFactory());
@@ -71,8 +72,8 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
      * 实例化 AsyncSender
      */
     private RabbitTemplate asyncSender(String rpcName, ConnectionFactory connectionFactory) {
-        final RabbitTemplate asyncSender = registerBean(RpcType.ASYNC.getName() + "-Sender-" + rpcName, RabbitTemplate.class, connectionFactory);
-        asyncSender.setRoutingKey(rpcName + ".async");
+        final RabbitTemplate asyncSender = registerBean("Sender-" + rpcName, RabbitTemplate.class, connectionFactory);
+        asyncSender.setRoutingKey(rpcName);
         asyncSender.setUserCorrelationId(true);
         return asyncSender;
     }
@@ -81,8 +82,8 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
      * 实例化 DelaySender
      */
     private RabbitTemplate delaySender(String rpcName, ConnectionFactory connectionFactory) {
-        final RabbitTemplate delaySender = registerBean(RpcType.DELAY.getName() + "-Sender-" + rpcName, RabbitTemplate.class, connectionFactory);
-        delaySender.setRoutingKey(rpcName + ".delay");
+        final RabbitTemplate delaySender = registerBean("Sender-" + rpcName, RabbitTemplate.class, connectionFactory);
+        delaySender.setRoutingKey(rpcName);
         delaySender.setUserCorrelationId(true);
         return delaySender;
     }
@@ -94,7 +95,7 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
         final RetryPolicy defaultRetryPolicy = RetryPolicy.withDefaults();
         final RetryTemplate retryTemplate = new RetryTemplate();
         retryTemplate.setRetryPolicy(defaultRetryPolicy);
-        final RabbitTemplate syncSender = registerBean(RpcType.SYNC.getName() + "-Sender-" + rpcName, RpcQuietRabbitTemplate.class, connectionFactory);
+        final RabbitTemplate syncSender = registerBean("Sender-" + rpcName, RpcQuietRabbitTemplate.class, connectionFactory);
         syncSender.setUseDirectReplyToContainer(true);
         syncSender.setRoutingKey(rpcName);
         syncSender.setReplyTimeout(replyTimeout);

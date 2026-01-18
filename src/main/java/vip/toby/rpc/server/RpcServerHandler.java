@@ -81,7 +81,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                 if (StringUtils.isBlank(methodName)) {
                     methodName = method.getName();
                 }
-                final String key = this.rpcType.getName() + "_" + this.rpcName + "_" + methodName;
+                final String key = this.rpcName + "_" + methodName;
                 if (METHOD_MAP.containsKey(key)) {
                     throw new RuntimeException("Class: " + rpcServerClass.getName() + ", Method: " + methodName + " 重复");
                 }
@@ -99,10 +99,10 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                 METHOD_MAP.put(key, method);
                 METHOD_PARAMETER_TYPE_MAP.put(key, parameterType);
                 METHOD_ALLOW_DUPLICATE_MAP.put(key, rpcServerMethod.allowDuplicate());
-                log.debug("{}-RpcServer-{}, Method: {} 已启动", this.rpcType.getName(), this.rpcName, methodName);
+                log.debug("RpcServer: {}, Method: {} 已启动", this.rpcName, methodName);
             }
         }
-        log.info("{}-RpcServerHandler-{} 已启动", this.rpcType.getName(), this.rpcName);
+        log.info("{} 已启动", this.rpcName);
     }
 
     @Override
@@ -120,14 +120,14 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                 // 获得当前 command
                 final String command = paramData.getString("command");
                 if (StringUtils.isBlank(command)) {
-                    log.error("Method Invoke Exception: Command 参数为空, {}-RpcServer-{}, Received: {}", this.rpcType.getName(), this.rpcName, paramData);
+                    log.error("Method Invoke Exception: Command 参数为空, RpcServer: {}, Received: {}", this.rpcName, paramData);
                     // 此错误一般出现在调试阶段，所以没有处理返回，只打印日志
                     return;
                 }
                 // 获取 data 数据
                 final JSONObject data = paramData.getJSONObject("data");
                 if (data == null) {
-                    log.error("Method Invoke Exception: Data 参数错误, {}-RpcServer-{}, Method: {}, Received: {}", this.rpcType.getName(), this.rpcName, command, paramData);
+                    log.error("Method Invoke Exception: Data 参数错误, RpcServer: {}, Method: {}, Received: {}", this.rpcName, command, paramData);
                     // 此错误一般出现在调试阶段，所以没有处理返回，只打印日志
                     return;
                 }
@@ -175,7 +175,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                     .getExchangeName(), messageProperties.getReplyToAddress()
                     .getRoutingKey(), replyProps, JSONB.toBytes(resultJson));
         } catch (Exception e) {
-            log.error("{}-RpcServer-{} Exception! Received: {}", this.rpcType.getName(), this.rpcName, paramData);
+            log.error("RpcServer: {} Exception! Received: {}", this.rpcName, paramData);
             log.error(e.getMessage(), e);
         } finally {
             // FIXME 同步和异步消息, 强制 Ack
@@ -189,20 +189,20 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
 
     private Object executeMethod(String command, Object data, String correlationId, boolean isSync) {
         // 获取当前服务的反射方法调用
-        final String key = this.rpcType.getName() + "_" + this.rpcName + "_" + command;
+        final String key = this.rpcName + "_" + command;
         // 通过缓存来优化性能
         final Method method = METHOD_MAP.get(key);
         if (method == null) {
-            log.error("Not Found! {}-RpcServer-{}, Method: {}", this.rpcType.getName(), this.rpcName, command);
+            log.error("Not Found! RpcServer: {}, Method: {}", this.rpcName, command);
             return null;
         }
         // 重复调用检测
         if (this.rpcServerHandlerInterceptor != null && this.rpcServerHandlerInterceptor.rpcDuplicateHandle(key, correlationId)) {
-            log.warn("Call Duplicate! {}-RpcServer-{}, Method: {}", this.rpcType.getName(), this.rpcName, command);
+            log.warn("Call Duplicate! RpcServer: {}, Method: {}", this.rpcName, command);
             return isSync ? R.failMessage("Call Duplicate").errorCode(-1) : null;
         }
         if (!METHOD_ALLOW_DUPLICATE_MAP.get(key) && this.rpcServerHandlerInterceptor != null && this.rpcServerHandlerInterceptor.duplicateHandle(key, data)) {
-            log.warn("Call Duplicate! {}-RpcServer-{}, Method: {}", this.rpcType.getName(), this.rpcName, command);
+            log.warn("Call Duplicate! RpcServer: {}, Method: {}", this.rpcName, command);
             return isSync ? R.failMessage("Call Duplicate").errorCode(-1) : null;
         }
         // JavaBean 参数
@@ -225,7 +225,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                         final List<String> tipList = new ArrayList<>();
                         constraintViolations.forEach(cv -> tipList.add(cv.getMessage()));
                         final String details = StringUtils.join(tipList, ", ");
-                        log.error("Param Invalid! Detail: {}, {}-RpcServer-{}, Method: {}", details, this.rpcType.getName(), this.rpcName, command);
+                        log.error("Param Invalid! Detail: {}, RpcServer: {}, Method: {}", details, this.rpcName, command);
                         return isSync ? R.failMessage(details) : null;
                     }
                     break;
@@ -257,9 +257,9 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
 
     private void log(JSONObject paramData, String command, double offset) {
         if (this.xMessageTTL > 0 && offset > Math.floor(this.rpcProperties.getServerSlowCallTimePercent() * this.xMessageTTL)) {
-            log.info("Call Slowing! Duration: {}ms, {}-RpcServer-{}, Method: {}, Received: {}", offset, this.rpcType.getName(), this.rpcName, command, paramData);
+            log.info("Call Slowing! Duration: {}ms, RpcServer: {}, Method: {}, Received: {}", offset, this.rpcName, command, paramData);
         } else {
-            log.info("Duration: {}ms, {}-RpcServer-{}, Method: {}, Received: {}", offset, this.rpcType.getName(), this.rpcName, command, paramData);
+            log.info("Duration: {}ms, RpcServer: {}, Method: {}, Received: {}", offset, this.rpcName, command, paramData);
         }
     }
 

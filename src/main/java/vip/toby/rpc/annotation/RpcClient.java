@@ -13,10 +13,10 @@ import java.lang.annotation.*;
 @Target({ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-@Component // 让 IDEA 正常识别
+@Component
 public @interface RpcClient {
 
-    String value();
+    String name();
 
     int replyTimeout() default 3000;
 
