@@ -66,13 +66,13 @@ public class RpcClientProxy<T> implements InvocationHandler {
             }
         }
         if (this.rpcType == RpcType.ASYNC && method.getGenericReturnType() != Void.TYPE) {
-            throw new RuntimeException("ASYNC-RpcClient 返回类型只能为 void, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
+            throw new RuntimeException("ASYNC RpcClient 返回类型只能为 void, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
         }
         if (this.rpcType == RpcType.DELAY && method.getGenericReturnType() != Void.TYPE) {
-            throw new RuntimeException("DELAY-RpcClient 返回类型只能为 void, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
+            throw new RuntimeException("DELAY RpcClient 返回类型只能为 void, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
         }
         if (this.rpcType == RpcType.SYNC && method.getGenericReturnType() != RpcResult.class) {
-            throw new RuntimeException("SYNC-RpcClient 返回类型只能为 RpcResult, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
+            throw new RuntimeException("SYNC RpcClient 返回类型只能为 RpcResult, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
         }
         String methodName = rpcClientMethod.value();
         if (StringUtils.isBlank(methodName)) {
@@ -83,14 +83,14 @@ public class RpcClientProxy<T> implements InvocationHandler {
         final Parameter[] parameters = method.getParameters();
         if (this.rpcType == RpcType.DELAY) {
             if (parameters.length != 1) {
-                throw new RuntimeException("DELAY-RpcClient 只能包含唯一参数, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
+                throw new RuntimeException("DELAY RpcClient 只能包含唯一参数, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
             }
             final Type type = parameters[0].getParameterizedType();
             if (!(type instanceof Class<?> clazz)) {
-                throw new RuntimeException("DELAY-RpcClient 参数必须继承 RpcDelayDTO, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
+                throw new RuntimeException("DELAY RpcClient 参数必须继承 RpcDelayDTO, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
             }
             if (!(RpcDelayDTO.class.isAssignableFrom(clazz))) {
-                throw new RuntimeException("DELAY-RpcClient 参数必须继承 RpcDelayDTO, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
+                throw new RuntimeException("DELAY RpcClient 参数必须继承 RpcDelayDTO, Class: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
             }
         }
         for (int i = 0; i < parameters.length; i++) {
@@ -124,12 +124,12 @@ public class RpcClientProxy<T> implements InvocationHandler {
         try {
             if (this.rpcType == RpcType.ASYNC) {
                 this.sender.send("simple.rpc.async", this.sender.getRoutingKey(), message, correlationData);
-                log.debug("{}-RpcClient-{}, Method: {}, Param: {}", this.rpcType.getName(), this.rpcName, methodName, paramData);
+                log.debug("RpcClient: {}, Method: {}, Param: {}", this.rpcName, methodName, paramData);
                 return null;
             }
             if (this.rpcType == RpcType.DELAY) {
                 this.sender.send("simple.rpc.delay", this.sender.getRoutingKey(), message, correlationData);
-                log.debug("{}-RpcClient-{}, Method: {}, Param: {}", this.rpcType.getName(), this.rpcName, methodName, paramData);
+                log.debug("RpcClient: {}, Method: {}, Param: {}", this.rpcName, methodName, paramData);
                 return null;
             }
             // 发起请求并返回结果
@@ -137,7 +137,7 @@ public class RpcClientProxy<T> implements InvocationHandler {
             final Message resultObj = this.sender.sendAndReceive("simple.rpc.sync", this.sender.getRoutingKey(), message, correlationData);
             if (resultObj == null) {
                 // 无返回任何结果，说明服务器负载过高，没有及时处理请求，导致超时
-                log.error("Service Unavailable! Duration: {}ms, {}-RpcClient-{}, Method: {}, Param: {}", System.currentTimeMillis() - start, this.rpcType.getName(), this.rpcName, methodName, paramData);
+                log.error("Unavailable! Duration: {}ms, RpcClient: {}, Method: {}, Param: {}", System.currentTimeMillis() - start, this.rpcName, methodName, paramData);
                 return RpcResult.build(RpcStatus.UNAVAILABLE);
             }
             // 获取调用结果的状态
@@ -146,7 +146,7 @@ public class RpcClientProxy<T> implements InvocationHandler {
             final Object resultData = resultJson.get("data");
             final RpcStatus rpcStatus = RpcStatus.of(status);
             if (rpcStatus != RpcStatus.OK || resultData == null) {
-                log.error("{}! Duration: {}ms, {}-RpcClient-{}, Method: {}, Param: {}", rpcStatus.getMessage(), System.currentTimeMillis() - start, this.rpcType.getName(), this.rpcName, methodName, paramData);
+                log.error("{}! Duration: {}ms, RpcClient: {}, Method: {}, Param: {}", rpcStatus.getMessage(), System.currentTimeMillis() - start, this.rpcName, methodName, paramData);
                 return RpcResult.build(rpcStatus);
             }
             // 获取操作层的状态
@@ -157,14 +157,14 @@ public class RpcClientProxy<T> implements InvocationHandler {
                     .errorCode(serverResultJson.getIntValue("errorCode")));
             final long offset = System.currentTimeMillis() - start;
             if (offset > Math.floor(this.rpcProperties.getClientSlowCallTimePercent() * this.replyTimeout)) {
-                log.warn("Call Slowing! Duration: {}ms, {}-RpcClient-{}, Method: {}, Param: {}, RpcResult: {}", offset, this.rpcType.getName(), this.rpcName, methodName, paramData, rpcResult);
+                log.warn("Call Slowing! Duration: {}ms, RpcClient: {}, Method: {}, Param: {}, RpcResult: {}", offset, this.rpcName, methodName, paramData, rpcResult);
             } else {
-                log.debug("Duration: {}ms, {}-RpcClient-{}, Method: {}, Param: {}, RpcResult: {}", offset, this.rpcType.getName(), this.rpcName, methodName, paramData, rpcResult);
+                log.debug("Duration: {}ms, RpcClient: {}, Method: {}, Param: {}, RpcResult: {}", offset, this.rpcName, methodName, paramData, rpcResult);
             }
             return rpcResult;
         } catch (Exception e) {
             this.sender.destroy();
-            log.error("{}-RpcServer-{} Exception! Method: {}, Param: {}", this.rpcType.getName(), this.rpcName, methodName, paramData);
+            log.error("RpcClient: {} Exception! Method: {}, Param: {}", this.rpcName, methodName, paramData);
             log.error(e.getMessage(), e);
             throw new RuntimeException(e);
         }
@@ -172,7 +172,7 @@ public class RpcClientProxy<T> implements InvocationHandler {
 
     @Override
     public String toString() {
-        return this.rpcType.getName() + "-RpcClient-" + this.rpcName;
+        return "RpcClient-" + this.rpcName;
     }
 
 }
