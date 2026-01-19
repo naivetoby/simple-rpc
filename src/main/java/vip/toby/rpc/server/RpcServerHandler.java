@@ -165,7 +165,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                 return;
             }
             // 状态设置
-            resultJson.put("status", rpcStatus.getStatus());
+            resultJson.put("code", rpcStatus.getCode());
             // 构建配置
             final BasicProperties replyProps = new BasicProperties.Builder().correlationId(messageProperties.getCorrelationId())
                     .contentEncoding(StandardCharsets.UTF_8.name())

@@ -11,25 +11,25 @@ import lombok.Getter;
 @Getter
 public enum RpcStatus {
 
-    OK(1, "ok"), // 成功
-    FAIL(0, "fail"), // 失败
-    NOT_FOUND(-1, "service not found"), // 不存在
-    UNAVAILABLE(-2, "service unavailable"); // 超时, 服务不可用
+    OK(200, "ok"), // 成功
+    FAIL(500, "fail"), // 失败
+    NOT_FOUND(404, "service not found"), // 不存在
+    UNAVAILABLE(504, "service unavailable"); // 超时, 服务不可用
 
-    private final int status;
+    private final int code;
     private final String message;
 
-    RpcStatus(int status, String message) {
-        this.status = status;
+    RpcStatus(int code, String message) {
+        this.code = code;
         this.message = message;
     }
 
-    public static RpcStatus of(Integer status) {
-        if (status == null) {
+    public static RpcStatus of(Integer code) {
+        if (code == null) {
             return FAIL;
         }
         for (RpcStatus e : RpcStatus.values()) {
-            if (e.status == status) {
+            if (e.code == code) {
                 return e;
             }
         }
@@ -38,7 +38,7 @@ public enum RpcStatus {
 
     public JSONObject toJSON() {
         final JSONObject json = new JSONObject();
-        json.put("status", this.status);
+        json.put("code", this.code);
         json.put("message", this.message);
         return json;
     }

@@ -2,9 +2,10 @@ package vip.toby.rpc.entity;
 
 import com.alibaba.fastjson2.JSONObject;
 import com.alibaba.fastjson2.annotation.JSONField;
-import lombok.NonNull;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.helpers.MessageFormatter;
+
+import javax.annotation.Nonnull;
 
 /**
  * R
@@ -17,32 +18,11 @@ public class R {
     private String message;
     private Object result;
 
-    @JSONField(serialize = false)
-    public int getCode() {
-        return this.code.getCode();
-    }
-
-    @JSONField(serialize = false)
-    public String getMessage() {
-        if (StringUtils.isBlank(this.message)) {
-            return this.code.getMessage();
-        }
-        return this.message;
-    }
-
-    @JSONField(serialize = false)
-    public Object getResult() {
-        if (this.isCodeOk()) {
-            return this.result == null ? new JSONObject() : this.result;
-        }
-        return null;
-    }
-
-    private R(@NonNull ICode code) {
+    private R(@Nonnull ICode code) {
         this.code = code;
     }
 
-    public static R build(@NonNull ICode code) {
+    public static R build(@Nonnull ICode code) {
         return new R(code);
     }
 
@@ -90,15 +70,37 @@ public class R {
         return this;
     }
 
-    public boolean isCodeOk() {
+    @JSONField(serialize = false)
+    public boolean isOk() {
         return RCode.of(this.code.getCode()) == RCode.OK;
+    }
+
+    @JSONField(serialize = false)
+    public int getCode() {
+        return this.code.getCode();
+    }
+
+    @JSONField(serialize = false)
+    public String getMessage() {
+        if (StringUtils.isNotBlank(this.message)) {
+            return this.message;
+        }
+        return this.code.getMessage();
+    }
+
+    @JSONField(serialize = false)
+    public Object getResult() {
+        if (this.isOk()) {
+            return this.result == null ? new JSONObject() : this.result;
+        }
+        return null;
     }
 
     public JSONObject toJSONV1() {
         final JSONObject result = new JSONObject();
-        result.put("status", this.isCodeOk() ? 1 : 0);
+        result.put("status", this.isOk() ? 1 : 0);
         result.put("message", this.getMessage());
-        if (this.isCodeOk()) {
+        if (this.isOk()) {
             result.put("result", this.getResult());
         } else {
             result.put("errorCode", this.getCode());
@@ -110,7 +112,7 @@ public class R {
         final JSONObject result = new JSONObject();
         result.put("code", this.getCode());
         result.put("msg", this.getMessage());
-        if (this.isCodeOk()) {
+        if (this.isOk()) {
             result.put("data", this.getResult());
         }
         return result;

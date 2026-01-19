@@ -1,8 +1,8 @@
 package vip.toby.rpc.entity;
 
+import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 import com.alibaba.fastjson2.annotation.JSONField;
-import lombok.Getter;
 
 import java.util.Objects;
 
@@ -11,7 +11,6 @@ import java.util.Objects;
  *
  * @author toby
  */
-@Getter
 public class RpcResult {
 
     private final RpcStatus status;
@@ -26,39 +25,71 @@ public class RpcResult {
         return new RpcResult(status, null);
     }
 
-    public static RpcResult okResult(R result) {
-        return build(RpcStatus.OK).result(result);
-    }
-
     public RpcResult result(R result) {
         this.result = result;
         return this;
     }
 
     @JSONField(serialize = false)
-    public boolean isStatusOk() {
+    public int getStatusCode() {
+        return this.status.getCode();
+    }
+
+    @JSONField(serialize = false)
+    public R getR() {
+        return this.result;
+    }
+
+    @JSONField(serialize = false)
+    public boolean isOk() {
         return this.status == RpcStatus.OK;
     }
 
     @JSONField(serialize = false)
-    public String getMessage() {
-        if (!isStatusOk()) {
-            return this.status.getMessage();
+    public int getCode() {
+        if (isOk()) {
+            return Objects.requireNonNullElseGet(this.result, R::fail).getCode();
         }
-        return Objects.requireNonNullElseGet(this.result, R::fail).getMessage();
+        return RCode.FAIL.getCode();
     }
 
     @JSONField(serialize = false)
-    public boolean isRCodeOk() {
-        return this.isStatusOk() && this.result != null && this.result.isCodeOk();
+    public String getMessage() {
+        if (isOk()) {
+            return Objects.requireNonNullElseGet(this.result, R::fail).getMessage();
+        }
+        return this.status.getMessage();
     }
 
     @JSONField(serialize = false)
-    public Object getRResult() {
-        if (isRCodeOk()) {
-            return this.result.getResult();
+    public Object getResult() {
+        if (isOk()) {
+            return Objects.requireNonNullElseGet(this.result, R::fail).getResult();
         }
         return null;
+    }
+
+    @JSONField(serialize = false)
+    public <T> T getResult(Class<T> clazz) {
+        return JSON.to(clazz, getResult());
+    }
+
+    @JSONField(serialize = false)
+    public int getIntResult(int defaultValue) {
+        final Object result = getResult();
+        if (result instanceof Number) {
+            return ((Number) result).intValue();
+        }
+        return defaultValue;
+    }
+
+    @JSONField(serialize = false)
+    public long getLongResult(long defaultValue) {
+        final Object result = getResult();
+        if (result instanceof Number) {
+            return ((Number) result).longValue();
+        }
+        return defaultValue;
     }
 
     @Override

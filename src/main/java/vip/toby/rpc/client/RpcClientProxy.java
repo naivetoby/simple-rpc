@@ -142,15 +142,15 @@ public class RpcClientProxy<T> implements InvocationHandler {
             }
             // 获取调用结果的状态
             final JSONObject resultJson = JSONB.parseObject(resultObj.getBody());
-            final int status = resultJson.getIntValue("status");
+            final int code = resultJson.getIntValue("code");
             final Object resultData = resultJson.get("data");
-            final RpcStatus rpcStatus = RpcStatus.of(status);
+            final RpcStatus rpcStatus = RpcStatus.of(code);
             if (rpcStatus != RpcStatus.OK || resultData == null) {
                 log.error("{}! Duration: {}ms, RpcClient: {}, Method: {}, Param: {}", rpcStatus.getMessage(), System.currentTimeMillis() - start, this.rpcName, methodName, paramData);
                 return RpcResult.build(rpcStatus);
             }
             // 获取操作层的状态
-            final RpcResult rpcResult = RpcResult.okResult(toR(resultData));
+            final RpcResult rpcResult = RpcResult.build(RpcStatus.OK).result(toR(resultData));
             final long offset = System.currentTimeMillis() - start;
             if (offset > Math.floor(this.rpcProperties.getClientSlowCallTimePercent() * this.replyTimeout)) {
                 log.warn("Call Slowing! Duration: {}ms, RpcClient: {}, Method: {}, Param: {}, RpcResult: {}", offset, this.rpcName, methodName, paramData, rpcResult);
