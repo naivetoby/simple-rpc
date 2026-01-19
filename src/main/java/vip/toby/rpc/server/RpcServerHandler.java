@@ -21,6 +21,7 @@ import org.springframework.validation.annotation.Validated;
 import vip.toby.rpc.annotation.RpcDTO;
 import vip.toby.rpc.annotation.RpcServerMethod;
 import vip.toby.rpc.entity.R;
+import vip.toby.rpc.entity.RCode;
 import vip.toby.rpc.entity.RpcStatus;
 import vip.toby.rpc.entity.RpcType;
 import vip.toby.rpc.properties.RpcProperties;
@@ -199,11 +200,11 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
         // 重复调用检测
         if (this.rpcServerHandlerInterceptor != null && this.rpcServerHandlerInterceptor.rpcDuplicateHandle(key, correlationId)) {
             log.warn("Call Duplicate! RpcServer: {}, Method: {}", this.rpcName, command);
-            return isSync ? R.failMessage("Call Duplicate").errorCode(-1) : null;
+            return isSync ? R.build(RCode.DUPLICATE) : null;
         }
         if (!METHOD_ALLOW_DUPLICATE_MAP.get(key) && this.rpcServerHandlerInterceptor != null && this.rpcServerHandlerInterceptor.duplicateHandle(key, data)) {
             log.warn("Call Duplicate! RpcServer: {}, Method: {}", this.rpcName, command);
-            return isSync ? R.failMessage("Call Duplicate").errorCode(-1) : null;
+            return isSync ? R.build(RCode.DUPLICATE) : null;
         }
         // JavaBean 参数
         final Class<?> parameterType = METHOD_PARAMETER_TYPE_MAP.get(key);

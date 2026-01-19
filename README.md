@@ -17,7 +17,7 @@
     
     <groupId>com.demo</groupId>
     <artifactId>demo</artifactId>
-    <version>3.4.2</version>
+    <version>3.4.3</version>
 
     <dependencies>
         <dependency>
@@ -27,11 +27,30 @@
         <dependency>
             <groupId>vip.toby.rpc</groupId>
             <artifactId>simple-rpc</artifactId>
-            <version>3.4.2</version>
+            <version>3.4.3</version>
         </dependency>
     </dependencies>
 </project>
 ```
+
+## BizCode
+```java
+@Getter
+public enum BizCode implements ICode {
+
+    PLUS_ERROR(1000, "计算错误"); // 计算错误
+
+    private final int code;
+    private final String message;
+
+    BizCode(int code, String message) {
+        this.code = code;
+        this.message = message;
+    }
+
+}
+```
+
 
 ## RpcDTO
 ```java
@@ -91,7 +110,7 @@ public class Server {
 
     @RpcServerMethod("methodName2-alias")
     public R methodName2(@Validated PlusDTO plusDTO) {
-        return R.failMessage("计算失败").errorCode(-9999);
+        return R.build(BizCode.PLUS_ERROR);
     }
 
 }
@@ -199,26 +218,26 @@ public class Application {
             plusDTO.setX(1);
             plusDTO.setY(1);
             RpcResult rpcResult = syncClient.methodName1(plusDTO);
-            log.info("syncClient.methodName1, RStatusOk: {}, RResult: {}", rpcResult.isRStatusOk(), rpcResult.getRResult());
+            log.info("syncClient.methodName1, RCodeOk: {}, RResult: {}", rpcResult.isRCodeOk(), rpcResult.getRResult());
 
             // 同步调用 1-1
             plusDTO.setX(0);
             rpcResult = syncClient.methodName1(plusDTO);
-            log.info("syncClient.methodName1, RStatusOk: {}, ErrorMessage: {}, ErrorCode: {}", rpcResult.isRStatusOk(), rpcResult.getResult()
-                    .getMessage(), rpcResult.getResult().getErrorCode());
+            log.info("syncClient.methodName1, RCodeOk: {}, Message: {}, Code: {}", rpcResult.isRCodeOk(), rpcResult.getResult()
+                    .getMessage(), rpcResult.getResult().getCode());
 
             // 同步调用 2
             plusDTO.setX(2);
             rpcResult = syncClient.methodName2(plusDTO);
-            log.info("syncClient.methodName2, RStatusOk: {}, ErrorMessage: {}, ErrorCode: {}", rpcResult.isRStatusOk(), rpcResult.getResult()
-                    .getMessage(), rpcResult.getResult().getErrorCode());
+            log.info("syncClient.methodName2, RCodeOk: {}, Message: {}, Code: {}", rpcResult.isRCodeOk(), rpcResult.getResult()
+                    .getMessage(), rpcResult.getResult().getCode());
 
             // 异步调用
             asyncClient.methodName2(plusDTO);
 
             // 同步调用 3
             rpcResult = otherSyncClient.methodName3(plusDTO);
-            log.info("otherSyncClient.methodName3, RStatusOk: {}, RResult: {}", rpcResult.isRStatusOk(), rpcResult.getRResult());
+            log.info("otherSyncClient.methodName3, RCodeOk: {}, RResult: {}", rpcResult.isRCodeOk(), rpcResult.getRResult());
 
             // 延迟调用, 注意⚠️ RabbitMQ 需要启用插件 https://github.com/rabbitmq/rabbitmq-delayed-message-exchange
             final DelayPlusDTO delayPlusDTO = new DelayPlusDTO();

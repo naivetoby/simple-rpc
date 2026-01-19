@@ -1,7 +1,9 @@
 package vip.toby.rpc.entity;
 
 import com.alibaba.fastjson2.JSONObject;
-import lombok.Getter;
+import com.alibaba.fastjson2.annotation.JSONField;
+import lombok.NonNull;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.helpers.MessageFormatter;
 
 /**
@@ -9,31 +11,47 @@ import org.slf4j.helpers.MessageFormatter;
  *
  * @author toby
  */
-@Getter
 public class R {
 
-    private final RStatus status;
+    private final ICode code;
     private String message;
     private Object result;
-    private int errorCode;
 
-    private R(RStatus status, String message, Object result, int errorCode) {
-        this.status = status;
-        this.message = message;
-        this.result = result;
-        this.errorCode = errorCode;
+    @JSONField(serialize = false)
+    public int getCode() {
+        return this.code.getCode();
     }
 
-    public static R build(RStatus status) {
-        return new R(status, status.getMessage(), null, 0);
+    @JSONField(serialize = false)
+    public String getMessage() {
+        if (StringUtils.isBlank(this.message)) {
+            return this.code.getMessage();
+        }
+        return this.message;
+    }
+
+    @JSONField(serialize = false)
+    public Object getResult() {
+        if (this.isCodeOk()) {
+            return this.result == null ? new JSONObject() : this.result;
+        }
+        return null;
+    }
+
+    private R(@NonNull ICode code) {
+        this.code = code;
+    }
+
+    public static R build(@NonNull ICode code) {
+        return new R(code);
     }
 
     public static R ok() {
-        return build(RStatus.OK);
+        return build(RCode.OK);
     }
 
     public static R fail() {
-        return build(RStatus.FAIL);
+        return build(RCode.FAIL);
     }
 
     public static R okResult(Object result) {
@@ -68,27 +86,32 @@ public class R {
     }
 
     public R result(Object result) {
-        if (result != null) {
-            this.result = result;
-        }
+        this.result = result;
         return this;
     }
 
-    public R errorCode(int errorCode) {
-        if (this.status == RStatus.FAIL) {
-            this.errorCode = errorCode;
+    public boolean isCodeOk() {
+        return RCode.of(this.code.getCode()) == RCode.OK;
+    }
+
+    public JSONObject toJSONV1() {
+        final JSONObject result = new JSONObject();
+        result.put("status", this.isCodeOk() ? 1 : 0);
+        result.put("message", this.getMessage());
+        if (this.isCodeOk()) {
+            result.put("result", this.getResult());
+        } else {
+            result.put("errorCode", this.getCode());
         }
-        return this;
+        return result;
     }
 
     public JSONObject toJSON() {
         final JSONObject result = new JSONObject();
-        result.put("status", this.status.getStatus());
-        result.put("message", this.message);
-        if (this.status == RStatus.OK) {
-            result.put("result", this.result == null ? new JSONObject() : this.result);
-        } else {
-            result.put("errorCode", this.errorCode);
+        result.put("code", this.getCode());
+        result.put("msg", this.getMessage());
+        if (this.isCodeOk()) {
+            result.put("data", this.getResult());
         }
         return result;
     }

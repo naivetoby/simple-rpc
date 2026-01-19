@@ -150,11 +150,7 @@ public class RpcClientProxy<T> implements InvocationHandler {
                 return RpcResult.build(rpcStatus);
             }
             // 获取操作层的状态
-            final JSONObject serverResultJson = JSON.parseObject(resultData.toString());
-            final RpcResult rpcResult = RpcResult.okResult(R.build(RStatus.of(serverResultJson.getIntValue("status")))
-                    .message(serverResultJson.getString("message"))
-                    .result(serverResultJson.get("result"))
-                    .errorCode(serverResultJson.getIntValue("errorCode")));
+            final RpcResult rpcResult = RpcResult.okResult(toR(resultData));
             final long offset = System.currentTimeMillis() - start;
             if (offset > Math.floor(this.rpcProperties.getClientSlowCallTimePercent() * this.replyTimeout)) {
                 log.warn("Call Slowing! Duration: {}ms, RpcClient: {}, Method: {}, Param: {}, RpcResult: {}", offset, this.rpcName, methodName, paramData, rpcResult);
@@ -168,6 +164,20 @@ public class RpcClientProxy<T> implements InvocationHandler {
             log.error(e.getMessage(), e);
             throw new RuntimeException(e);
         }
+    }
+
+    private R toR(Object resultData) {
+        final JSONObject result = JSONObject.parseObject(resultData.toString());
+        if (result != null) {
+            final int codeValue = result.getIntValue("code", RCode.FAIL.getCode());
+            String message = result.getString("msg");
+            if (StringUtils.isBlank(message)) {
+                message = RCode.FAIL.getMessage();
+            }
+            final ICode code = ICode.build(codeValue, message);
+            return R.build(code).result(result.get("data"));
+        }
+        return R.fail();
     }
 
     @Override

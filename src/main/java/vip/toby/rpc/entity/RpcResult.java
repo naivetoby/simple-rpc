@@ -1,7 +1,10 @@
 package vip.toby.rpc.entity;
 
 import com.alibaba.fastjson2.JSONObject;
+import com.alibaba.fastjson2.annotation.JSONField;
 import lombok.Getter;
+
+import java.util.Objects;
 
 /**
  * RpcResult
@@ -32,14 +35,28 @@ public class RpcResult {
         return this;
     }
 
-    public boolean isRStatusOk() {
-        return this.getStatus() == RpcStatus.OK && this.getResult() != null && this.getResult()
-                .getStatus() == RStatus.OK;
+    @JSONField(serialize = false)
+    public boolean isStatusOk() {
+        return this.status == RpcStatus.OK;
     }
 
+    @JSONField(serialize = false)
+    public String getMessage() {
+        if (!isStatusOk()) {
+            return this.status.getMessage();
+        }
+        return Objects.requireNonNullElseGet(this.result, R::fail).getMessage();
+    }
+
+    @JSONField(serialize = false)
+    public boolean isRCodeOk() {
+        return this.isStatusOk() && this.result != null && this.result.isCodeOk();
+    }
+
+    @JSONField(serialize = false)
     public Object getRResult() {
-        if (isRStatusOk()) {
-            return this.getResult().getResult();
+        if (isRCodeOk()) {
+            return this.result.getResult();
         }
         return null;
     }
