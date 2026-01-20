@@ -17,16 +17,4 @@ public enum RCode implements ICode {
         this.message = message;
     }
 
-    public static RCode of(Integer code) {
-        if (code == null) {
-            return FAIL;
-        }
-        for (RCode e : RCode.values()) {
-            if (e.code == code) {
-                return e;
-            }
-        }
-        return FAIL;
-    }
-
 }

@@ -72,7 +72,7 @@ public class R {
 
     @JSONField(serialize = false)
     public boolean isOk() {
-        return RCode.of(this.code.getCode()) == RCode.OK;
+        return getCode() == RCode.OK.getCode();
     }
 
     @JSONField(serialize = false)
@@ -103,7 +103,7 @@ public class R {
         if (this.isOk()) {
             result.put("result", this.getResult());
         } else {
-            result.put("errorCode", this.getCode());
+            result.put("errorCode", this.getCode() == RCode.FAIL.getCode() ? 0 : this.getCode());
         }
         return result;
     }
