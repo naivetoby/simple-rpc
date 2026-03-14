@@ -17,6 +17,7 @@ public class R {
     private final ICode code;
     private String message;
     private Object result;
+    private Object detail;
 
     private R(@Nonnull ICode code) {
         this.code = code;
@@ -70,6 +71,11 @@ public class R {
         return this;
     }
 
+    public R detail(Object detail) {
+        this.detail = detail;
+        return this;
+    }
+
     @JSONField(serialize = false)
     public boolean isOk() {
         return getCode() == RCode.OK.getCode();
@@ -96,6 +102,14 @@ public class R {
         return null;
     }
 
+    @JSONField(serialize = false)
+    public Object getDetail() {
+        if (!this.isOk()) {
+            return this.detail;
+        }
+        return null;
+    }
+
     public JSONObject toJSONV1() {
         final JSONObject result = new JSONObject();
         result.put("status", this.isOk() ? 1 : 0);
@@ -114,6 +128,10 @@ public class R {
         result.put("msg", this.getMessage());
         if (this.isOk()) {
             result.put("data", this.getResult());
+        } else {
+            if (this.detail != null) {
+                result.put("det", this.detail);
+            }
         }
         return result;
     }

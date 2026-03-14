@@ -175,7 +175,7 @@ public class RpcClientProxy<T> implements InvocationHandler {
                 message = RCode.FAIL.getMessage();
             }
             final ICode code = ICode.build(codeValue, message);
-            return R.build(code).result(result.get("data"));
+            return R.build(code).result(result.get("data")).detail(result.get("det"));
         }
         return R.fail();
     }

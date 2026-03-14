@@ -70,6 +70,14 @@ public class RpcResult {
     }
 
     @JSONField(serialize = false)
+    public Object getDetail() {
+        if (isOk()) {
+            return Objects.requireNonNullElseGet(this.result, R::fail).getDetail();
+        }
+        return null;
+    }
+
+    @JSONField(serialize = false)
     public <T> T getResult(Class<T> clazz) {
         return JSON.to(clazz, getResult());
     }

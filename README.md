@@ -148,6 +148,16 @@ public class DelayPlusServer {
 }
 ```
 
+## Error Detail
+
+```java
+return R.fail().message("参数错误").detail(Map.of("field", "role", "reason", "不能为空"));
+```
+
+```json
+{"code":1,"msg":"参数错误","det":{"field":"role","reason":"不能为空"}}
+```
+
 ## RpcClient Demo
 ```java
 @RpcClient(name = "rpc-queue-name", type = RpcType.SYNC)
