@@ -11,6 +11,7 @@ import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.BeanPostProcessor;
+import org.springframework.aop.framework.AopProxyUtils;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -66,7 +67,7 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
 
     @Override
     public Object postProcessAfterInitialization(@Nonnull Object bean, @Nonnull String beanName) throws BeansException {
-        final Class<?> rpcServerClass = bean.getClass();
+        final Class<?> rpcServerClass = AopProxyUtils.ultimateTargetClass(bean);
         for (Annotation annotation : rpcServerClass.getAnnotations()) {
             if (annotation instanceof RpcServer) {
                 rpcServerStart(bean, (RpcServer) annotation);

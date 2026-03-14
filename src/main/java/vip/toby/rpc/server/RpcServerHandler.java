@@ -14,6 +14,7 @@ import org.jspecify.annotations.NonNull;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.listener.api.ChannelAwareMessageListener;
+import org.springframework.aop.framework.AopProxyUtils;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.util.ReflectionUtils;
@@ -74,7 +75,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
     @Override
     public void afterPropertiesSet() {
         // 初始化所有接口
-        final Class<?> rpcServerClass = this.rpcServerBean.getClass();
+        final Class<?> rpcServerClass = AopProxyUtils.ultimateTargetClass(this.rpcServerBean);
         for (Method method : rpcServerClass.getMethods()) {
             final RpcServerMethod rpcServerMethod = AnnotationUtils.findAnnotation(method, RpcServerMethod.class);
             if (rpcServerMethod != null) {

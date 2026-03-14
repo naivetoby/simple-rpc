@@ -17,7 +17,7 @@
     
     <groupId>com.demo</groupId>
     <artifactId>demo</artifactId>
-    <version>3.4.5</version>
+    <version>3.4.6</version>
 
     <dependencies>
         <dependency>
@@ -27,7 +27,7 @@
         <dependency>
             <groupId>vip.toby.rpc</groupId>
             <artifactId>simple-rpc</artifactId>
-            <version>3.4.5</version>
+            <version>3.4.6</version>
         </dependency>
     </dependencies>
 </project>
@@ -97,6 +97,9 @@ public class RpcClientConfig implements RpcClientConfigurer {
 ```
 
 ## RpcServer Demo
+
+Spring AOP 代理场景下会自动读取目标类，参数上的 `@Validated` / `@Valid` 校验仍可正常生效。
+
 ```java
 @RpcServer(name = "rpc-queue-name", type = {RpcType.SYNC, RpcType.ASYNC}, xMessageTTL = 1000, threadNum = 1)
 public class Server {
