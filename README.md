@@ -151,7 +151,7 @@ public class DelayPlusServer {
 ## Error Detail
 
 ```java
-return R.fail().message("参数错误").detail(Map.of("field", "role", "reason", "不能为空"));
+return R.failMessage("参数错误").detail(Map.of("field", "role", "reason", "不能为空"));
 ```
 
 ```json
