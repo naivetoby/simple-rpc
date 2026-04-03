@@ -53,6 +53,7 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
         final RpcType rpcType = rpcClient.type();
         final String rpcName = RpcUtil.getRpcName(rpcType, rpcClient.name());
         final int replyTimeout = rpcClient.replyTimeout();
+        final int partitionNum = rpcClient.partitionNum();
         if (rpcType == RpcType.SYNC) {
             sender = syncSender(rpcName, replyTimeout, getConnectionFactory());
         } else if (rpcType == RpcType.ASYNC) {
@@ -60,7 +61,7 @@ public class RpcClientProxyFactory<T> implements FactoryBean<T>, BeanFactoryAwar
         } else {
             sender = delaySender(rpcName, getConnectionFactory());
         }
-        return (T) Proxy.newProxyInstance(this.rpcClientInterface.getClassLoader(), new Class[]{this.rpcClientInterface}, new RpcClientProxy<>(this.rpcClientInterface, rpcName, rpcType, sender, getRpcProperties(), replyTimeout));
+        return (T) Proxy.newProxyInstance(this.rpcClientInterface.getClassLoader(), new Class[]{this.rpcClientInterface}, new RpcClientProxy<>(this.rpcClientInterface, rpcName, rpcType, sender, getRpcProperties(), replyTimeout, partitionNum));
     }
 
     @Override

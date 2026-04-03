@@ -23,6 +23,8 @@ public @interface RpcServer {
 
     int threadNum() default 10;
 
+    int partitionNum() default 0;
+
     RpcType[] type() default RpcType.SYNC;
 
 }

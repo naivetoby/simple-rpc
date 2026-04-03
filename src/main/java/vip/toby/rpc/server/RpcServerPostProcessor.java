@@ -81,22 +81,37 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
      */
     private void rpcServerStart(Object rpcServerBean, RpcServer rpcServer) {
         final String rpcValue = rpcServer.name();
+        final int partitionNum = rpcServer.partitionNum();
         for (RpcType rpcType : rpcServer.type()) {
             final String rpcName = RpcUtil.getRpcName(rpcType, rpcValue);
             switch (rpcType) {
                 case SYNC -> {
                     final Map<String, Object> params = new HashMap<>(1);
                     params.put("x-message-ttl", rpcServer.xMessageTTL());
+                    final RpcServerHandler syncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, getValidator(), getRpcProperties(), rpcServer.xMessageTTL(), rpcServerHandlerInterceptor);
                     final Queue syncQueue = queue(rpcName, rpcType, true, params);
                     binding(rpcName, rpcType, syncQueue);
-                    final RpcServerHandler syncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, getValidator(), getRpcProperties(), rpcServer.xMessageTTL(), rpcServerHandlerInterceptor);
                     messageListenerContainer(rpcName, syncQueue, syncServerHandler, rpcServer.threadNum());
+                    if (partitionNum > 1) {
+                        for (int partition = 0; partition < partitionNum; partition++) {
+                            final Queue partitionQueue = queue(RpcUtil.getPartitionRoutingKey(rpcName, partition), rpcType, true, params);
+                            binding(partitionQueue.getName(), rpcType, partitionQueue);
+                            messageListenerContainer(partitionQueue.getName(), partitionQueue, syncServerHandler, 1);
+                        }
+                    }
                 }
                 case ASYNC, DELAY -> {
+                    final RpcServerHandler asyncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, getValidator(), getRpcProperties(), 0, rpcServerHandlerInterceptor);
                     final Queue asyncQueue = queue(rpcName, rpcType, false, null);
                     binding(rpcName, rpcType, asyncQueue);
-                    final RpcServerHandler asyncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, getValidator(), getRpcProperties(), 0, rpcServerHandlerInterceptor);
                     messageListenerContainer(rpcName, asyncQueue, asyncServerHandler, rpcServer.threadNum());
+                    if (partitionNum > 1) {
+                        for (int partition = 0; partition < partitionNum; partition++) {
+                            final Queue partitionQueue = queue(RpcUtil.getPartitionRoutingKey(rpcName, partition), rpcType, false, null);
+                            binding(partitionQueue.getName(), rpcType, partitionQueue);
+                            messageListenerContainer(partitionQueue.getName(), partitionQueue, asyncServerHandler, 1);
+                        }
+                    }
                 }
                 default -> {
                 }

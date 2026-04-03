@@ -101,7 +101,7 @@ public class RpcClientConfig implements RpcClientConfigurer {
 Spring AOP 代理场景下会自动读取目标类，参数上的 `@Validated` / `@Valid` 校验仍可正常生效。
 
 ```java
-@RpcServer(name = "rpc-queue-name", type = {RpcType.SYNC, RpcType.ASYNC}, xMessageTTL = 1000, threadNum = 1)
+@RpcServer(name = "rpc-queue-name", type = {RpcType.SYNC, RpcType.ASYNC}, xMessageTTL = 1000, threadNum = 1, partitionNum = 16)
 public class Server {
 
     @RpcServerMethod
@@ -171,13 +171,13 @@ public interface SyncClient {
 
 }
 
-@RpcClient(name = "rpc-queue-name", type = RpcType.ASYNC)
+@RpcClient(name = "rpc-queue-name", type = RpcType.ASYNC, partitionNum = 16)
 public interface AsyncClient {
 
     @RpcClientMethod
     void methodName1(PlusDTO plusDTO);
 
-    @RpcClientMethod("methodName2-alias")
+    @RpcClientMethod(value = "methodName2-alias", partitionKey = "x")
     void methodName2(PlusDTO plusDTO);
 
 }
@@ -198,6 +198,74 @@ public interface DelayClient {
 
 }
 ```
+
+## Partition Key
+
+只有部分方法需要顺序消费时，可以只给这些方法配置 `partitionKey`，其他方法继续走原来的普通队列。
+
+- `@RpcClient.partitionNum` / `@RpcServer.partitionNum`
+  开启分片队列数量；`<= 1` 时不启用分片
+- `@RpcClientMethod.partitionKey`
+  指定当前方法使用请求体中的哪个字段作为分区键
+- 没有配置 `partitionKey` 的方法
+  继续走原来的 `rpcName` 队列，按 `threadNum` 并发消费
+- 配置了 `partitionKey` 的方法
+  会按字段值哈希到 `rpcName.0 ... rpcName.N-1` 中的一条队列，并且每个分片队列固定单线程消费，从而保证同一分区键值顺序执行
+
+```java
+@Data
+@RpcDTO
+public class CircleEventDTO {
+
+    @NotNull
+    private Long uid;
+
+    @NotNull
+    private Long circleId;
+
+}
+```
+
+```java
+@RpcServer(name = "circle-event", type = RpcType.ASYNC, threadNum = 10, partitionNum = 16)
+public class CircleEventServer {
+
+    @RpcServerMethod
+    public R refreshCircleStat(@Validated CircleEventDTO dto) {
+        return R.ok();
+    }
+
+    @RpcServerMethod
+    public R handleCircleMemberEvent(@Validated CircleEventDTO dto) {
+        return R.ok();
+    }
+
+}
+```
+
+```java
+@RpcClient(name = "circle-event", type = RpcType.ASYNC, partitionNum = 16)
+public interface CircleEventClient {
+
+    @RpcClientMethod
+    void refreshCircleStat(CircleEventDTO dto);
+
+    @RpcClientMethod(partitionKey = "uid")
+    void handleCircleMemberEvent(CircleEventDTO dto);
+
+}
+```
+
+上面这个例子里：
+
+- `refreshCircleStat` 没有配置 `partitionKey`，会继续普通并发消费
+- `handleCircleMemberEvent` 配置了 `partitionKey = "uid"`，同一个 `uid` 的消息会顺序执行
+
+注意：
+
+- `partitionKey` 取的是请求 `data` 里的字段名，必须能在消息体中取到
+- 只有 `client` 和 `server` 两边都配置了相同的 `partitionNum`，分片顺序能力才会生效
+- 分片队列是为了保证“同一分区键有序”，不是全局有序
 
 ## Application Demo
 ```java
