@@ -25,6 +25,8 @@ public @interface RpcServer {
 
     int partitionNum() default 0;
 
+    int queueCapacity() default 1000;
+
     RpcType[] type() default RpcType.SYNC;
 
 }

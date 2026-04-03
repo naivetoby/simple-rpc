@@ -17,4 +17,6 @@ public @interface RpcServerMethod {
 
     boolean allowDuplicate() default false;
 
+    String partitionKey() default "";
+
 }

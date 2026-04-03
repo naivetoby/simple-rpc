@@ -16,6 +16,7 @@ import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.listener.api.ChannelAwareMessageListener;
 import org.springframework.aop.framework.AopProxyUtils;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.beans.factory.DisposableBean;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.validation.annotation.Validated;
@@ -33,6 +34,13 @@ import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * RpcServerHandler
@@ -40,11 +48,12 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author toby
  */
 @Slf4j
-public class RpcServerHandler implements ChannelAwareMessageListener, InitializingBean {
+public class RpcServerHandler implements ChannelAwareMessageListener, InitializingBean, DisposableBean {
 
     private final static Map<String, Method> METHOD_MAP = new ConcurrentHashMap<>();
     private final static Map<String, Class<?>> METHOD_PARAMETER_TYPE_MAP = new ConcurrentHashMap<>();
     private final static Map<String, Boolean> METHOD_ALLOW_DUPLICATE_MAP = new ConcurrentHashMap<>();
+    private final static Map<String, String> METHOD_PARTITION_KEY_MAP = new ConcurrentHashMap<>();
 
     private final Object rpcServerBean;
     private final String rpcName;
@@ -52,7 +61,12 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
     private final Validator validator;
     private final RpcProperties rpcProperties;
     private final int xMessageTTL;
+    private final int threadNum;
+    private final int partitionNum;
+    private final int queueCapacity;
     private final RpcServerHandlerInterceptor rpcServerHandlerInterceptor;
+    private ExecutorService asyncExecutor;
+    private List<ExecutorService> partitionExecutors = Collections.emptyList();
 
     RpcServerHandler(
             Object rpcServerBean,
@@ -61,6 +75,9 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
             Validator validator,
             RpcProperties rpcProperties,
             int xMessageTTL,
+            int threadNum,
+            int partitionNum,
+            int queueCapacity,
             RpcServerHandlerInterceptor rpcServerHandlerInterceptor
     ) {
         this.rpcServerBean = rpcServerBean;
@@ -69,6 +86,9 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
         this.validator = validator;
         this.rpcProperties = rpcProperties;
         this.xMessageTTL = xMessageTTL;
+        this.threadNum = Math.max(threadNum, 1);
+        this.partitionNum = partitionNum;
+        this.queueCapacity = Math.max(queueCapacity, 1);
         this.rpcServerHandlerInterceptor = rpcServerHandlerInterceptor;
     }
 
@@ -101,9 +121,11 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                 METHOD_MAP.put(key, method);
                 METHOD_PARAMETER_TYPE_MAP.put(key, parameterType);
                 METHOD_ALLOW_DUPLICATE_MAP.put(key, rpcServerMethod.allowDuplicate());
+                METHOD_PARTITION_KEY_MAP.put(key, rpcServerMethod.partitionKey());
                 log.debug("RpcServer: {}, Method: {} 已启动", this.rpcName, methodName);
             }
         }
+        initExecutors();
         log.info("{} 已启动", this.rpcName);
     }
 
@@ -112,6 +134,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
         RpcStatus rpcStatus = RpcStatus.FAIL;
         MessageProperties messageProperties = null;
         JSONObject paramData = null;
+        boolean acked = false;
         try {
             messageProperties = message.getMessageProperties();
             // 组装参数 JSON
@@ -135,6 +158,12 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
                 }
                 // 异步执行任务
                 if (this.rpcType == RpcType.ASYNC || this.rpcType == RpcType.DELAY) {
+                    if (partitionEnabled()) {
+                        dispatchAsync(command, data, messageProperties.getCorrelationId(), paramData);
+                        channel.basicAck(messageProperties.getDeliveryTag(), false);
+                        acked = true;
+                        return;
+                    }
                     final long start = System.currentTimeMillis();
                     executeMethod(command, data, messageProperties.getCorrelationId(), false);
                     final double offset = System.currentTimeMillis() - start;
@@ -181,7 +210,7 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
             log.error(e.getMessage(), e);
         } finally {
             // FIXME 同步和异步消息, 强制 Ack
-            if (this.rpcType == RpcType.SYNC || this.rpcType == RpcType.ASYNC) {
+            if (!acked && (this.rpcType == RpcType.SYNC || this.rpcType == RpcType.ASYNC)) {
                 if (messageProperties != null) {
                     channel.basicAck(messageProperties.getDeliveryTag(), false);
                 }
@@ -263,6 +292,114 @@ public class RpcServerHandler implements ChannelAwareMessageListener, Initializi
         } else {
             log.info("Duration: {}ms, RpcServer: {}, Method: {}, Received: {}", offset, this.rpcName, command, paramData);
         }
+    }
+
+    @Override
+    public void destroy() {
+        if (this.asyncExecutor != null) {
+            this.asyncExecutor.shutdown();
+        }
+        for (ExecutorService partitionExecutor : this.partitionExecutors) {
+            partitionExecutor.shutdown();
+        }
+    }
+
+    private void initExecutors() {
+        if (!partitionEnabled()) {
+            return;
+        }
+        boolean hasPartitionMethod = false;
+        for (Map.Entry<String, String> entry : METHOD_PARTITION_KEY_MAP.entrySet()) {
+            if (!entry.getKey().startsWith(this.rpcName + "_")) {
+                continue;
+            }
+            if (StringUtils.isNotBlank(entry.getValue())) {
+                hasPartitionMethod = true;
+                break;
+            }
+        }
+        if (!hasPartitionMethod) {
+            return;
+        }
+        this.asyncExecutor = new ThreadPoolExecutor(
+                this.threadNum,
+                this.threadNum,
+                0L,
+                TimeUnit.MILLISECONDS,
+                new ArrayBlockingQueue<>(this.queueCapacity),
+                namedThreadFactory(this.rpcName + "-async"),
+                new ThreadPoolExecutor.CallerRunsPolicy()
+        );
+        final List<ExecutorService> executors = new ArrayList<>(this.partitionNum);
+        for (int i = 0; i < this.partitionNum; i++) {
+            executors.add(new ThreadPoolExecutor(
+                    1,
+                    1,
+                    0L,
+                    TimeUnit.MILLISECONDS,
+                    new ArrayBlockingQueue<>(this.queueCapacity),
+                    namedThreadFactory(this.rpcName + "-partition-" + i),
+                    new ThreadPoolExecutor.CallerRunsPolicy()
+            ));
+        }
+        this.partitionExecutors = executors;
+    }
+
+    private boolean partitionEnabled() {
+        return (this.rpcType == RpcType.ASYNC || this.rpcType == RpcType.DELAY) && this.partitionNum > 1;
+    }
+
+    private void dispatchAsync(String command, JSONObject data, String correlationId, JSONObject paramData) {
+        final ExecutorService executor = selectExecutor(command, data);
+        final Runnable task = () -> {
+            final long start = System.currentTimeMillis();
+            try {
+                executeMethod(command, data, correlationId, false);
+                final double offset = System.currentTimeMillis() - start;
+                log(paramData, command, offset);
+            } catch (Exception e) {
+                log.error("Method Invoke Exception! Received: {}", paramData);
+                log.error(e.getMessage(), e);
+            }
+        };
+        try {
+            executor.execute(task);
+        } catch (RejectedExecutionException e) {
+            task.run();
+        }
+    }
+
+    private ExecutorService selectExecutor(String command, JSONObject data) {
+        final String key = this.rpcName + "_" + command;
+        final String partitionKey = METHOD_PARTITION_KEY_MAP.get(key);
+        if (StringUtils.isBlank(partitionKey)) {
+            if (this.asyncExecutor == null) {
+                throw new RuntimeException("未初始化异步线程池, RpcServer: " + this.rpcName + ", Method: " + command);
+            }
+            return this.asyncExecutor;
+        }
+        if (!data.containsKey(partitionKey)) {
+            throw new RuntimeException("未找到分区字段, PartitionKey: " + partitionKey + ", RpcServer: " + this.rpcName + ", Method: " + command);
+        }
+        final Object partitionValue = data.get(partitionKey);
+        if (partitionValue == null) {
+            throw new RuntimeException("分区字段不能为空, PartitionKey: " + partitionKey + ", RpcServer: " + this.rpcName + ", Method: " + command);
+        }
+        if (this.partitionExecutors.isEmpty()) {
+            throw new RuntimeException("未开启分区配置, RpcServer: " + this.rpcName + ", Method: " + command);
+        }
+        final int index = Math.floorMod(partitionValue.toString().hashCode(), this.partitionExecutors.size());
+        return this.partitionExecutors.get(index);
+    }
+
+    private ThreadFactory namedThreadFactory(String prefix) {
+        final AtomicInteger index = new AtomicInteger(1);
+        return runnable -> {
+            final Thread thread = new Thread(runnable);
+            thread.setName(prefix + "-" + index.getAndIncrement());
+            thread.setDaemon(false);
+            return thread;
+        };
     }
 
 }

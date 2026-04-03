@@ -13,7 +13,6 @@ import vip.toby.rpc.annotation.RpcClientMethod;
 import vip.toby.rpc.annotation.RpcDTO;
 import vip.toby.rpc.entity.*;
 import vip.toby.rpc.properties.RpcProperties;
-import vip.toby.rpc.util.RpcUtil;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -35,7 +34,6 @@ public class RpcClientProxy<T> implements InvocationHandler {
     private final RabbitTemplate sender;
     private final RpcProperties rpcProperties;
     private final int replyTimeout;
-    private final int partitionNum;
 
     RpcClientProxy(
             Class<T> rpcClientInterface,
@@ -43,8 +41,7 @@ public class RpcClientProxy<T> implements InvocationHandler {
             RpcType rpcType,
             RabbitTemplate sender,
             RpcProperties rpcProperties,
-            int replyTimeout,
-            int partitionNum
+            int replyTimeout
     ) {
         this.rpcClientInterface = rpcClientInterface;
         this.rpcName = rpcName;
@@ -52,7 +49,6 @@ public class RpcClientProxy<T> implements InvocationHandler {
         this.sender = sender;
         this.rpcProperties = rpcProperties;
         this.replyTimeout = replyTimeout;
-        this.partitionNum = partitionNum;
     }
 
     @Override
@@ -114,9 +110,6 @@ public class RpcClientProxy<T> implements InvocationHandler {
         final JSONObject paramData = new JSONObject();
         paramData.put("command", methodName);
         paramData.put("data", data);
-        final String partitionKey = rpcClientMethod.partitionKey();
-        final Object partitionValue = getPartitionValue(method, partitionKey, data);
-        final String routingKey = RpcUtil.getRoutingKey(this.rpcName, this.partitionNum, partitionValue);
         // MessageProperties
         final MessageProperties messageProperties = new MessageProperties();
         messageProperties.setContentType(MessageProperties.CONTENT_TYPE_BYTES);
@@ -130,18 +123,18 @@ public class RpcClientProxy<T> implements InvocationHandler {
         final CorrelationData correlationData = new CorrelationData(UUID.randomUUID().toString());
         try {
             if (this.rpcType == RpcType.ASYNC) {
-                this.sender.send("simple.rpc.async", routingKey, message, correlationData);
+                this.sender.send("simple.rpc.async", this.sender.getRoutingKey(), message, correlationData);
                 log.debug("RpcClient: {}, Method: {}, Param: {}", this.rpcName, methodName, paramData);
                 return null;
             }
             if (this.rpcType == RpcType.DELAY) {
-                this.sender.send("simple.rpc.delay", routingKey, message, correlationData);
+                this.sender.send("simple.rpc.delay", this.sender.getRoutingKey(), message, correlationData);
                 log.debug("RpcClient: {}, Method: {}, Param: {}", this.rpcName, methodName, paramData);
                 return null;
             }
             // 发起请求并返回结果
             final long start = System.currentTimeMillis();
-            final Message resultObj = this.sender.sendAndReceive("simple.rpc.sync", routingKey, message, correlationData);
+            final Message resultObj = this.sender.sendAndReceive("simple.rpc.sync", this.sender.getRoutingKey(), message, correlationData);
             if (resultObj == null) {
                 // 无返回任何结果，说明服务器负载过高，没有及时处理请求，导致超时
                 log.error("Unavailable! Duration: {}ms, RpcClient: {}, Method: {}, Param: {}", System.currentTimeMillis() - start, this.rpcName, methodName, paramData);
@@ -190,23 +183,6 @@ public class RpcClientProxy<T> implements InvocationHandler {
     @Override
     public String toString() {
         return "RpcClient-" + this.rpcName;
-    }
-
-    private Object getPartitionValue(Method method, String partitionKey, JSONObject data) {
-        if (StringUtils.isBlank(partitionKey)) {
-            return null;
-        }
-        if (this.partitionNum <= 1) {
-            throw new RuntimeException("未开启分区配置, RpcClient: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
-        }
-        if (!data.containsKey(partitionKey)) {
-            throw new RuntimeException("未找到分区字段, PartitionKey: " + partitionKey + ", RpcClient: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
-        }
-        final Object partitionValue = data.get(partitionKey);
-        if (partitionValue == null) {
-            throw new RuntimeException("分区字段不能为空, PartitionKey: " + partitionKey + ", RpcClient: " + this.rpcClientInterface.getName() + ", Method: " + method.getName());
-        }
-        return partitionValue;
     }
 
 }

@@ -101,7 +101,7 @@ public class RpcClientConfig implements RpcClientConfigurer {
 Spring AOP 代理场景下会自动读取目标类，参数上的 `@Validated` / `@Valid` 校验仍可正常生效。
 
 ```java
-@RpcServer(name = "rpc-queue-name", type = {RpcType.SYNC, RpcType.ASYNC}, xMessageTTL = 1000, threadNum = 1, partitionNum = 16)
+@RpcServer(name = "rpc-queue-name", type = {RpcType.SYNC, RpcType.ASYNC}, xMessageTTL = 1000, threadNum = 4, partitionNum = 16, queueCapacity = 1000)
 public class Server {
 
     @RpcServerMethod
@@ -111,7 +111,7 @@ public class Server {
         return R.okResult(x + y);
     }
 
-    @RpcServerMethod("methodName2-alias")
+    @RpcServerMethod(value = "methodName2-alias", partitionKey = "x")
     public R methodName2(@Validated PlusDTO plusDTO) {
         return R.build(BizCode.PLUS_ERROR);
     }
@@ -171,13 +171,13 @@ public interface SyncClient {
 
 }
 
-@RpcClient(name = "rpc-queue-name", type = RpcType.ASYNC, partitionNum = 16)
+@RpcClient(name = "rpc-queue-name", type = RpcType.ASYNC)
 public interface AsyncClient {
 
     @RpcClientMethod
     void methodName1(PlusDTO plusDTO);
 
-    @RpcClientMethod(value = "methodName2-alias", partitionKey = "x")
+    @RpcClientMethod("methodName2-alias")
     void methodName2(PlusDTO plusDTO);
 
 }
@@ -201,16 +201,34 @@ public interface DelayClient {
 
 ## Partition Key
 
-只有部分方法需要顺序消费时，可以只给这些方法配置 `partitionKey`，其他方法继续走原来的普通队列。
+只有异步队列和延迟队列支持分区键顺序消费；同步队列不支持。
 
-- `@RpcClient.partitionNum` / `@RpcServer.partitionNum`
-  开启分片队列数量；`<= 1` 时不启用分片
-- `@RpcClientMethod.partitionKey`
-  指定当前方法使用请求体中的哪个字段作为分区键
-- 没有配置 `partitionKey` 的方法
-  继续走原来的 `rpcName` 队列，按 `threadNum` 并发消费
-- 配置了 `partitionKey` 的方法
-  会按字段值哈希到 `rpcName.0 ... rpcName.N-1` 中的一条队列，并且每个分片队列固定单线程消费，从而保证同一分区键值顺序执行
+生产端不需要关心分区键，仍然像原来一样往普通队列发送消息。只有消费端在方法上声明了 `partitionKey`，框架才会在进程内按字段值进行串行分发。
+
+- `@RpcServer.partitionNum`
+  只对 `ASYNC` / `DELAY` 生效，表示消费端内部按键顺序执行的分区数量；`<= 1` 时不启用分区执行
+- `@RpcServer.queueCapacity`
+  本地异步线程池和分区 worker 的排队容量上限，避免把 MQ 积压无限搬进 JVM 内存
+- `@RpcServerMethod.partitionKey`
+  指定当前异步/延迟方法使用请求体中的哪个字段作为分区键
+- `@RpcClient`
+  不需要额外配置分区参数，仍然只负责发送消息
+- 没有配置 `partitionKey` 的异步/延迟方法
+  继续普通并发执行
+- 配置了 `partitionKey` 的异步/延迟方法
+  会在消费端按字段值哈希到固定分区 worker，同一分区键值顺序执行
+- `SYNC` 方法
+  不支持分区顺序消费
+- 当存在分区方法时
+  MQ 入口会退化为单 consumer 拉取，再在进程内并行分发；`threadNum` 用于无序任务线程池大小，`partitionNum` 用于有序分区 worker 数量
+- 当本地队列打满时
+  新任务会退回当前 MQ listener 线程执行，主动形成背压，而不是继续无限堆积在内存里
+- 多实例同时消费同一条队列时
+  只能保证单实例内按键有序，不能保证跨实例全局有序
+- 消息进入本地线程池后会立即向 MQ 确认
+  如果进程在本地执行前崩溃，消息不会自动回到队列；这是一种“降低 producer/consumer 耦合，换取顺序分发能力”的取舍
+- 分区模式不会消除积压
+  它只是把一部分排队从 MQ 挪到当前实例的本地队列里，所以 `threadNum`、`partitionNum`、`queueCapacity` 都需要结合峰值流量评估
 
 ```java
 @Data
@@ -227,7 +245,7 @@ public class CircleEventDTO {
 ```
 
 ```java
-@RpcServer(name = "circle-event", type = RpcType.ASYNC, threadNum = 10, partitionNum = 16)
+@RpcServer(name = "circle-event", type = RpcType.ASYNC, threadNum = 8, partitionNum = 16, queueCapacity = 2000)
 public class CircleEventServer {
 
     @RpcServerMethod
@@ -235,7 +253,7 @@ public class CircleEventServer {
         return R.ok();
     }
 
-    @RpcServerMethod
+    @RpcServerMethod(partitionKey = "uid")
     public R handleCircleMemberEvent(@Validated CircleEventDTO dto) {
         return R.ok();
     }
@@ -244,13 +262,13 @@ public class CircleEventServer {
 ```
 
 ```java
-@RpcClient(name = "circle-event", type = RpcType.ASYNC, partitionNum = 16)
+@RpcClient(name = "circle-event", type = RpcType.ASYNC)
 public interface CircleEventClient {
 
     @RpcClientMethod
     void refreshCircleStat(CircleEventDTO dto);
 
-    @RpcClientMethod(partitionKey = "uid")
+    @RpcClientMethod
     void handleCircleMemberEvent(CircleEventDTO dto);
 
 }
@@ -264,8 +282,8 @@ public interface CircleEventClient {
 注意：
 
 - `partitionKey` 取的是请求 `data` 里的字段名，必须能在消息体中取到
-- 只有 `client` 和 `server` 两边都配置了相同的 `partitionNum`，分片顺序能力才会生效
-- 分片队列是为了保证“同一分区键有序”，不是全局有序
+- 只有 `ASYNC` / `DELAY` 支持分区键顺序消费，`SYNC` 不支持
+- 分区执行是为了保证“同一分区键在当前消费实例内有序”，不是全局有序
 
 ## Application Demo
 ```java

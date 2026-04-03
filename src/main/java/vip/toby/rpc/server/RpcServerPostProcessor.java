@@ -17,13 +17,15 @@ import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
+import org.springframework.util.ReflectionUtils;
 import vip.toby.rpc.annotation.RpcServer;
+import vip.toby.rpc.annotation.RpcServerMethod;
 import vip.toby.rpc.entity.RpcType;
 import vip.toby.rpc.properties.RpcProperties;
-import vip.toby.rpc.util.RpcUtil;
 
 import javax.annotation.Nonnull;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -82,36 +84,23 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
     private void rpcServerStart(Object rpcServerBean, RpcServer rpcServer) {
         final String rpcValue = rpcServer.name();
         final int partitionNum = rpcServer.partitionNum();
+        final boolean partitionMode = partitionNum > 1 && hasPartitionMethod(rpcServerBean);
         for (RpcType rpcType : rpcServer.type()) {
-            final String rpcName = RpcUtil.getRpcName(rpcType, rpcValue);
+            final String rpcName = vip.toby.rpc.util.RpcUtil.getRpcName(rpcType, rpcValue);
             switch (rpcType) {
                 case SYNC -> {
                     final Map<String, Object> params = new HashMap<>(1);
                     params.put("x-message-ttl", rpcServer.xMessageTTL());
-                    final RpcServerHandler syncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, getValidator(), getRpcProperties(), rpcServer.xMessageTTL(), rpcServerHandlerInterceptor);
-                    final Queue syncQueue = queue(rpcName, rpcType, true, params);
+                    final RpcServerHandler syncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, getValidator(), getRpcProperties(), rpcServer.xMessageTTL(), rpcServer.threadNum(), 0, rpcServer.queueCapacity(), rpcServerHandlerInterceptor);
+                    final org.springframework.amqp.core.Queue syncQueue = queue(rpcName, rpcType, true, params);
                     binding(rpcName, rpcType, syncQueue);
                     messageListenerContainer(rpcName, syncQueue, syncServerHandler, rpcServer.threadNum());
-                    if (partitionNum > 1) {
-                        for (int partition = 0; partition < partitionNum; partition++) {
-                            final Queue partitionQueue = queue(RpcUtil.getPartitionRoutingKey(rpcName, partition), rpcType, true, params);
-                            binding(partitionQueue.getName(), rpcType, partitionQueue);
-                            messageListenerContainer(partitionQueue.getName(), partitionQueue, syncServerHandler, 1);
-                        }
-                    }
                 }
                 case ASYNC, DELAY -> {
-                    final RpcServerHandler asyncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, getValidator(), getRpcProperties(), 0, rpcServerHandlerInterceptor);
-                    final Queue asyncQueue = queue(rpcName, rpcType, false, null);
+                    final RpcServerHandler asyncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, getValidator(), getRpcProperties(), 0, rpcServer.threadNum(), partitionMode ? partitionNum : 0, rpcServer.queueCapacity(), rpcServerHandlerInterceptor);
+                    final org.springframework.amqp.core.Queue asyncQueue = queue(rpcName, rpcType, false, null);
                     binding(rpcName, rpcType, asyncQueue);
-                    messageListenerContainer(rpcName, asyncQueue, asyncServerHandler, rpcServer.threadNum());
-                    if (partitionNum > 1) {
-                        for (int partition = 0; partition < partitionNum; partition++) {
-                            final Queue partitionQueue = queue(RpcUtil.getPartitionRoutingKey(rpcName, partition), rpcType, false, null);
-                            binding(partitionQueue.getName(), rpcType, partitionQueue);
-                            messageListenerContainer(partitionQueue.getName(), partitionQueue, asyncServerHandler, 1);
-                        }
-                    }
+                    messageListenerContainer(rpcName, asyncQueue, asyncServerHandler, partitionMode ? 1 : rpcServer.threadNum());
                 }
                 default -> {
                 }
@@ -122,14 +111,14 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
     /**
      * 实例化 Queue
      */
-    private Queue queue(String rpcName, RpcType rpcType, boolean autoDelete, Map<String, Object> params) {
-        return registerBean(this.applicationContext, "Queue-" + rpcName, Queue.class, rpcName, rpcType == RpcType.ASYNC || rpcType == RpcType.DELAY, false, autoDelete, params);
+    private org.springframework.amqp.core.Queue queue(String rpcName, RpcType rpcType, boolean autoDelete, Map<String, Object> params) {
+        return registerBean(this.applicationContext, "Queue-" + rpcName, org.springframework.amqp.core.Queue.class, rpcName, rpcType == RpcType.ASYNC || rpcType == RpcType.DELAY, false, autoDelete, params);
     }
 
     /**
      * 实例化 Binding
      */
-    private void binding(String rpcName, RpcType rpcType, Queue queue) {
+    private void binding(String rpcName, RpcType rpcType, org.springframework.amqp.core.Queue queue) {
         registerBean(this.applicationContext, "Binding-" + rpcName, Binding.class, queue.getName(), Binding.DestinationType.QUEUE, getDirectExchange(rpcType).getName(), queue.getName(), Collections.<String, Object>emptyMap());
     }
 
@@ -143,9 +132,12 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
             Validator validator,
             RpcProperties rpcProperties,
             int xMessageTTL,
+            int threadNum,
+            int partitionNum,
+            int queueCapacity,
             RpcServerHandlerInterceptor rpcServerHandlerInterceptor
     ) {
-        return registerBean(this.applicationContext, "RpcServerHandler-" + rpcName, RpcServerHandler.class, rpcServerBean, rpcName, rpcType, validator, rpcProperties, xMessageTTL, rpcServerHandlerInterceptor);
+        return registerBean(this.applicationContext, "RpcServerHandler-" + rpcName, RpcServerHandler.class, rpcServerBean, rpcName, rpcType, validator, rpcProperties, xMessageTTL, threadNum, partitionNum, queueCapacity, rpcServerHandlerInterceptor);
     }
 
     /**
@@ -153,7 +145,7 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
      */
     private void messageListenerContainer(
             String rpcName,
-            Queue queue,
+            org.springframework.amqp.core.Queue queue,
             RpcServerHandler rpcServerHandler,
             int threadNum
     ) {
@@ -229,6 +221,17 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
             }
         }
         return this.delayDirectExchange;
+    }
+
+    private boolean hasPartitionMethod(Object rpcServerBean) {
+        final Class<?> rpcServerClass = AopProxyUtils.ultimateTargetClass(rpcServerBean);
+        for (Method method : rpcServerClass.getMethods()) {
+            final RpcServerMethod rpcServerMethod = org.springframework.core.annotation.AnnotationUtils.findAnnotation(method, RpcServerMethod.class);
+            if (rpcServerMethod != null && org.apache.commons.lang3.StringUtils.isNotBlank(rpcServerMethod.partitionKey())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

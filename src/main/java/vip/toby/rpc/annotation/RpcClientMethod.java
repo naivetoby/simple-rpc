@@ -14,6 +14,4 @@ public @interface RpcClientMethod {
 
     String value() default "";
 
-    String partitionKey() default "";
-
 }
