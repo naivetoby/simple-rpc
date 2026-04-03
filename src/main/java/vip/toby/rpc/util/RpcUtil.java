@@ -21,10 +21,14 @@ public class RpcUtil {
     }
 
     public static String getRoutingKey(String rpcName, int partitionNum, Object partitionValue) {
-        if (partitionNum <= 1 || partitionValue == null) {
+        if (!partitionEnabled(partitionNum) || partitionValue == null) {
             return rpcName;
         }
         return getPartitionRoutingKey(rpcName, Math.floorMod(Objects.toString(partitionValue).hashCode(), partitionNum));
+    }
+
+    public static boolean partitionEnabled(int partitionNum) {
+        return partitionNum >= 2;
     }
 
     public static String getPartitionRoutingKey(String rpcName, int partition) {
