@@ -4,7 +4,12 @@ import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 import org.hibernate.validator.HibernateValidator;
-import org.springframework.amqp.core.*;
+import org.springframework.amqp.core.AbstractExchange;
+import org.springframework.amqp.core.AcknowledgeMode;
+import org.springframework.amqp.core.Binding;
+import org.springframework.amqp.core.CustomExchange;
+import org.springframework.amqp.core.DirectExchange;
+import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
 import org.springframework.beans.BeansException;
@@ -87,16 +92,24 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
                 case SYNC -> {
                     final Map<String, Object> params = new HashMap<>(1);
                     params.put("x-message-ttl", rpcServer.xMessageTTL());
+                    final RpcServerHandler syncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, getValidator(), getRpcProperties(), rpcServer.xMessageTTL(), rpcServerHandlerInterceptor);
                     final Queue syncQueue = queue(rpcName, rpcType, true, params);
                     binding(rpcName, rpcType, syncQueue);
-                    final RpcServerHandler syncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, getValidator(), getRpcProperties(), rpcServer.xMessageTTL(), rpcServerHandlerInterceptor);
                     messageListenerContainer(rpcName, syncQueue, syncServerHandler, rpcServer.threadNum());
                 }
                 case ASYNC, DELAY -> {
+                    final int partitionNum = rpcServer.partitionNum();
+                    final RpcServerHandler asyncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, getValidator(), getRpcProperties(), 0, rpcServerHandlerInterceptor);
                     final Queue asyncQueue = queue(rpcName, rpcType, false, null);
                     binding(rpcName, rpcType, asyncQueue);
-                    final RpcServerHandler asyncServerHandler = rpcServerHandler(rpcName, rpcType, rpcServerBean, getValidator(), getRpcProperties(), 0, rpcServerHandlerInterceptor);
                     messageListenerContainer(rpcName, asyncQueue, asyncServerHandler, rpcServer.threadNum());
+                    if (RpcUtil.partitionEnabled(partitionNum)) {
+                        for (int partition = 0; partition < partitionNum; partition++) {
+                            final Queue partitionQueue = queue(RpcUtil.getPartitionRoutingKey(rpcName, partition), rpcType, false, null, true);
+                            binding(partitionQueue.getName(), rpcType, partitionQueue);
+                            messageListenerContainer(partitionQueue.getName(), partitionQueue, asyncServerHandler, 1);
+                        }
+                    }
                 }
                 default -> {
                 }
@@ -108,7 +121,15 @@ public class RpcServerPostProcessor implements BeanPostProcessor {
      * 实例化 Queue
      */
     private Queue queue(String rpcName, RpcType rpcType, boolean autoDelete, Map<String, Object> params) {
-        return registerBean(this.applicationContext, "Queue-" + rpcName, Queue.class, rpcName, rpcType == RpcType.ASYNC || rpcType == RpcType.DELAY, false, autoDelete, params);
+        return queue(rpcName, rpcType, autoDelete, params, false);
+    }
+
+    private Queue queue(String rpcName, RpcType rpcType, boolean autoDelete, Map<String, Object> params, boolean singleActiveConsumer) {
+        final Map<String, Object> queueArgs = params == null ? new HashMap<>() : new HashMap<>(params);
+        if (singleActiveConsumer) {
+            queueArgs.put("x-single-active-consumer", true);
+        }
+        return registerBean(this.applicationContext, "Queue-" + rpcName, Queue.class, rpcName, rpcType == RpcType.ASYNC || rpcType == RpcType.DELAY, false, autoDelete, queueArgs.isEmpty() ? null : queueArgs);
     }
 
     /**

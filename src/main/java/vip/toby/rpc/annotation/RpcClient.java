@@ -20,6 +20,8 @@ public @interface RpcClient {
 
     int replyTimeout() default 3000;
 
+    int partitionNum() default 1;
+
     RpcType type() default RpcType.SYNC;
 
 }
