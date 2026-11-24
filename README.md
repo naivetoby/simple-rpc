@@ -2,7 +2,7 @@
 
 Simple-RPC 是基于 Spring Boot 和 RabbitMQ 的轻量级 Java RPC 框架。服务端用注解暴露方法，客户端通过接口调用，无需在业务代码中创建队列、绑定交换机或处理消息回复。
 
-[快速开始](#快速开始) · [分区路由](#分区路由) · [测试与示例](#测试与示例) · [Maven Central](https://central.sonatype.com/artifact/vip.toby.rpc/simple-rpc)
+[快速开始](#快速开始) · [分区路由](#分区路由) · [测试与示例](#测试与示例) · [微服务示例](#微服务示例) · [Maven Central](https://central.sonatype.com/artifact/vip.toby.rpc/simple-rpc)
 
 ## 主要特性
 
@@ -26,7 +26,7 @@ Simple-RPC 是基于 Spring Boot 和 RabbitMQ 的轻量级 Java RPC 框架。服
 <dependency>
     <groupId>vip.toby.rpc</groupId>
     <artifactId>simple-rpc</artifactId>
-    <version>3.4.10</version>
+    <version>3.5.0</version>
 </dependency>
 ```
 
@@ -131,11 +131,19 @@ final int sum = calculatorClient.add(dto).getIntResult(0); // 7
 | `mvn clean test` | 单元测试：验证消息格式、路由、参数校验、去重和 ACK 行为，无需启动 RabbitMQ。 |
 | `mvn -Prabbit-it clean test` | 单元测试 + 真实 RabbitMQ：验证同步往返、普通异步、同键顺序、分区收件队列，以及普通和分区延迟投递。 |
 
-本机运行集成测试时，启用延迟插件，准备专用的空 vhost `simple-rpc-it`，并为测试账号授予配置、读、写权限。可通过 `SPRING_RABBITMQ_HOST`、`SPRING_RABBITMQ_PORT`、`SPRING_RABBITMQ_USERNAME`、`SPRING_RABBITMQ_PASSWORD` 指定连接。[GitHub Actions](.github/workflows/test.yml) 会在 push 和 PR 时准备临时 RabbitMQ 并运行完整测试。
+本地运行集成测试前，先启用 RabbitMQ 延迟消息插件，准备专用的空 vhost `simple-rpc-it`，并授予测试账号在该 vhost 上配置、读、写的权限。通过 `SPRING_RABBITMQ_HOST` 和 `SPRING_RABBITMQ_PORT` 指定服务地址，通过 `SPRING_RABBITMQ_USERNAME` 和 `SPRING_RABBITMQ_PASSWORD` 设置测试账号和密码。
+
+[GitHub Actions](.github/workflows/test.yml) 在推送代码或提交 PR 时并行运行两项检查：
+
+- **JVM tests**：使用 JDK 21 运行单元测试和 RabbitMQ 集成测试。
+- **Native interop**：在 Linux 上使用 GraalVM 构建原生客户端和服务端，通过 RabbitMQ 验证同步回显和服务端参数校验。详见[原生测试说明](src/test/native/README.md)。
 
 - [端到端用例](src/test/java/vip/toby/demo/DemoIT.java)：查看真实调用及预期结果。
 - [客户端接口](src/test/java/vip/toby/demo/client) · [服务端方法](src/test/java/vip/toby/demo/server) · [手动注册示例](src/test/java/vip/toby/demo/config/RpcClientConfig.java)。
-- [simple-rpc-demo](https://github.com/naivetoby/simple-rpc-demo)：独立的 Spring Boot 示例应用。
+
+### 微服务示例
+
+[Simple-RPC Showcase](https://github.com/naivetoby/simple-rpc-showcase) 展示了如何在两个独立的 Spring Boot 应用之间使用 RPC：HTTP 网关通过共享客户端接口调用话题服务，追加事件并查询已消费的事件列表。使用 Docker Compose 启动示例后，可以向同一话题分别发送同步、异步和延迟事件，观察按话题分区后的消费顺序。
 
 ## 许可证
 
