@@ -7,16 +7,17 @@ import vip.toby.rpc.annotation.RpcServerMethod;
 import vip.toby.rpc.entity.R;
 import vip.toby.rpc.entity.RpcType;
 
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
-@RpcServer(name = "delay-plus", type = RpcType.DELAY, threadNum = 1)
+@RpcServer(name = "delay-plus", type = RpcType.DELAY, threadNum = 1, partitionNum = 4)
 public class DelayPlusServer {
     public record Delivery(int sum, long receivedAt) {}
-    public final CompletableFuture<Delivery> received = new CompletableFuture<>();
+    public final BlockingQueue<Delivery> received = new LinkedBlockingQueue<>();
 
     @RpcServerMethod
     public R delayPlus(@Validated DelayPlusDTO dto) {
-        received.complete(new Delivery(dto.getX() + dto.getY(), System.nanoTime()));
+        received.add(new Delivery(dto.getX() + dto.getY(), System.nanoTime()));
         return R.ok();
     }
 }

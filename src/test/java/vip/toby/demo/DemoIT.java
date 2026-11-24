@@ -2,7 +2,11 @@ package vip.toby.demo;
 
 import com.demo.client.OtherSyncClient;
 import org.junit.jupiter.api.*;
+import com.alibaba.fastjson2.JSONB;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -13,6 +17,8 @@ import vip.toby.rpc.annotation.EnableSimpleRpc;
 import vip.toby.rpc.entity.*;
 
 import java.util.Map;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -30,6 +36,19 @@ class DemoIT {
 
     @AfterAll void stop() {
         if (context != null) context.close();
+    }
+
+    // Record the payload marker at the consumer, not the producer's intended routing key.
+    private BlockingQueue<Integer> observeQueue(String queue) {
+        BlockingQueue<Integer> received = new LinkedBlockingQueue<>();
+        var listener = context.getBean("MessageListenerContainer-" + queue, SimpleMessageListenerContainer.class);
+        listener.addAfterReceivePostProcessors(message -> {
+            if (queue.equals(message.getMessageProperties().getConsumerQueue())) {
+                received.add(JSONB.parseObject(message.getBody()).getJSONObject("data").getInteger("y"));
+            }
+            return message;
+        });
+        return received;
     }
 
     private PlusDTO plus(int x, int y) {
@@ -62,7 +81,11 @@ class DemoIT {
     @Test void ordinaryAsyncAndSameKeyOrderedDelivery() throws InterruptedException {
         var async = context.getBean(AsyncClient.class);
         var server = context.getBean(Server.class);
+        var ordinary = observeQueue("rpc-queue-name.async");
+        var partition1 = observeQueue("rpc-queue-name.async.1");
+        var partition3 = observeQueue("rpc-queue-name.async.3");
         async.methodName2(plus(9, 42));
+        assertEquals(42, ordinary.poll(5, TimeUnit.SECONDS));
         // The alias method is shared with SYNC; discard any earlier SYNC observations.
         Integer seen;
         do { seen = server.normal.poll(5, TimeUnit.SECONDS); } while (seen != null && seen != 42);
@@ -71,6 +94,11 @@ class DemoIT {
         async.methodName3(plus(9, 2));
         assertEquals(1, server.partition.poll(5, TimeUnit.SECONDS));
         assertEquals(2, server.partition.poll(5, TimeUnit.SECONDS));
+        async.methodName3(plus(10, 3));
+        assertEquals(3, server.partition.poll(5, TimeUnit.SECONDS));
+        assertEquals(1, partition1.poll(5, TimeUnit.SECONDS));
+        assertEquals(2, partition1.poll(5, TimeUnit.SECONDS));
+        assertEquals(3, partition3.poll(5, TimeUnit.SECONDS));
     }
 
     @Test void queueDeclarationsKeepTtlDurabilityAndPartitionIsolation() {
@@ -87,16 +115,22 @@ class DemoIT {
         }
     }
 
-    @Test void delayedExchangeDoesNotDeliverImmediately() throws Exception {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void delayedExchangeRoutesAndDeliversAfterDelay(boolean keyed) throws Exception {
         var dto = new DelayPlusDTO();
         dto.setX(5);
         dto.setY(8);
         dto.setCreateTime(System.currentTimeMillis());
         dto.setDelay(400);
         var client = context.getBean(DelayClient.class);
+        var queue = observeQueue(keyed ? "delay-plus.delay.1" : "delay-plus.delay");
         long start = System.nanoTime();
-        client.delayPlus(dto);
-        var delivery = context.getBean(DelayPlusServer.class).received.get(8, TimeUnit.SECONDS);
+        if (keyed) client.delayPlusByKey(dto);
+        else client.delayPlus(dto);
+        var delivery = context.getBean(DelayPlusServer.class).received.poll(8, TimeUnit.SECONDS);
+        assertNotNull(delivery, "delayed handler did not receive the message");
+        assertEquals(8, queue.poll(1, TimeUnit.SECONDS));
         assertEquals(13, delivery.sum());
         assertTrue(delivery.receivedAt() - start >= TimeUnit.MILLISECONDS.toNanos(390));
     }
