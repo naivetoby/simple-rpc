@@ -7,12 +7,12 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.1.1</version>
+        <version>4.2.0</version>
     </parent>
 
     <groupId>vip.toby.rpc</groupId>
     <artifactId>simple-rpc</artifactId>
-    <version>3.4.9</version>
+    <version>3.4.10</version>
     <packaging>jar</packaging>
 
     <name>simple-rpc</name>
@@ -44,7 +44,7 @@
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-amqp</artifactId>
+            <artifactId>spring-boot-starter-rabbitmq</artifactId>
             <scope>compile</scope>
         </dependency>
         <dependency>
@@ -55,13 +55,13 @@
         <dependency>
             <groupId>com.alibaba.fastjson2</groupId>
             <artifactId>fastjson2</artifactId>
-            <version>2.0.65</version>
+            <version>2.0.66</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
-            <version>3.20.0</version>
+            <version>3.22.0</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
@@ -73,7 +73,7 @@
         <dependency>
             <groupId>com.github.spotbugs</groupId>
             <artifactId>spotbugs-annotations</artifactId>
-            <version>4.10.4</version>
+            <version>4.10.5</version>
             <scope>compile</scope>
         </dependency>
     </dependencies>
@@ -175,7 +175,7 @@
             <plugin>
                 <groupId>org.sonatype.central</groupId>
                 <artifactId>central-publishing-maven-plugin</artifactId>
-                <version>0.11.0</version>
+                <version>0.12.0</version>
                 <extensions>true</extensions>
                 <configuration>
                     <publishingServerId>central</publishingServerId>
