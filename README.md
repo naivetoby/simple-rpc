@@ -374,6 +374,17 @@ public class Application {
 }
 ```
 
+## 运行回归测试
+
+| 场景 | 命令 | 环境 |
+| --- | --- | --- |
+| 日常开发：运行单元测试 | `mvn clean test` | JDK 21、Maven |
+| 完整测试：额外验证同步调用、异步消费和延迟投递 | `mvn -Prabbit-it clean test` | 同上，加测试用 RabbitMQ |
+
+本地运行完整测试时，请启用 `rabbitmq_delayed_message_exchange` 插件，并为测试账号准备专用的空 vhost `simple-rpc-it`（授予配置、读、写权限）。
+
+每次 push 或提交 PR，[GitHub Actions](.github/workflows/test.yml) 都会自动准备 RabbitMQ 并运行完整测试。
+
 ## Demo 源码
 https://github.com/naivetoby/simple-rpc-demo
 
