@@ -1,4 +1,4 @@
-name: JVM tests
+name: RPC tests
 on: [push, pull_request, workflow_call]
 permissions:
   contents: read
@@ -26,9 +26,15 @@ jobs:
             -e RABBITMQ_DEFAULT_USER="$SPRING_RABBITMQ_USERNAME" \
             -e RABBITMQ_DEFAULT_PASS="$SPRING_RABBITMQ_PASSWORD" \
             -e RABBITMQ_DEFAULT_VHOST=simple-rpc-it simple-rpc-rabbit:it
-          broker() { docker exec rpc-rabbit "$@"; }
+          broker() { docker exec --user rabbitmq rpc-rabbit "$@"; }
           for _ in {1..30}; do
-            if broker rabbitmq-diagnostics -q check_port_connectivity &&
+            running=$(docker inspect -f '{{.State.Running}}' rpc-rabbit)
+            if [ "$running" != true ]; then
+              echo 'RabbitMQ exited during startup' >&2
+              exit 1
+            fi
+            if broker test -s /var/lib/rabbitmq/.erlang.cookie &&
+               broker rabbitmq-diagnostics -q check_port_connectivity &&
                broker rabbitmqctl -q list_vhosts name | grep -Fx simple-rpc-it
             then
               exit 0
