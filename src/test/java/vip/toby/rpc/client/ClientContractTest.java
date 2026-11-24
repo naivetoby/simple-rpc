@@ -57,7 +57,7 @@ class ClientContractTest {
         client(RpcType.DELAY, 4).later(dto);
         var sent = ArgumentCaptor.forClass(Message.class);
         verify(transport).send(eq("simple.rpc.delay"), eq("test.3"), sent.capture(), any(CorrelationData.class));
-        assertEquals(350L, sent.getValue().getMessageProperties().getDelayLong());
+        assertEquals(350L, sent.getValue().getMessageProperties().getHeaders().get("x-delay"));
     }
 
     @Test void invalidPartitionDeclarationsCannotPublish() {
