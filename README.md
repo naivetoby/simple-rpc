@@ -2,7 +2,7 @@
 
 Simple-RPC 是基于 Spring Boot 和 RabbitMQ 的轻量级 Java RPC 框架。服务端用注解暴露方法，客户端通过接口调用，无需在业务代码中创建队列、绑定交换机或处理消息回复。
 
-[快速开始](#快速开始) · [分区路由](#分区路由) · [测试与示例](#测试与示例) · [Maven Central](https://central.sonatype.com/artifact/vip.toby.rpc/simple-rpc)
+[快速开始](#快速开始) · [分区路由](#分区路由) · [测试与示例](#测试与示例) · [微服务示例](#微服务示例) · [Maven Central](https://central.sonatype.com/artifact/vip.toby.rpc/simple-rpc)
 
 ## 主要特性
 
@@ -135,7 +135,10 @@ final int sum = calculatorClient.add(dto).getIntResult(0); // 7
 
 - [端到端用例](src/test/java/vip/toby/demo/DemoIT.java)：查看真实调用及预期结果。
 - [客户端接口](src/test/java/vip/toby/demo/client) · [服务端方法](src/test/java/vip/toby/demo/server) · [手动注册示例](src/test/java/vip/toby/demo/config/RpcClientConfig.java)。
-- [simple-rpc-demo](https://github.com/naivetoby/simple-rpc-demo)：独立的 Spring Boot 示例应用。
+
+### 微服务示例
+
+[Simple-RPC Showcase](https://github.com/naivetoby/simple-rpc-showcase) 展示了如何在两个独立的 Spring Boot 应用之间使用 RPC：HTTP 网关通过共享客户端接口调用话题服务，追加事件并查询已消费的事件列表。使用 Docker Compose 启动示例后，可以向同一话题分别发送同步、异步和延迟事件，观察按话题分区后的消费顺序。
 
 ## 许可证
 
