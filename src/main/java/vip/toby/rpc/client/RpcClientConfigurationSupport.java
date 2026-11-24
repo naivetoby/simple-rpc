@@ -1,7 +1,9 @@
 package vip.toby.rpc.client;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.aot.AotDetector;
 import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.FactoryBean;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.support.*;
 import org.springframework.context.ApplicationContext;
@@ -25,6 +27,9 @@ public class RpcClientConfigurationSupport implements BeanDefinitionRegistryPost
 
     @Override
     public void postProcessBeanDefinitionRegistry(@Nonnull BeanDefinitionRegistry registry) throws BeansException {
+        if (AotDetector.useGeneratedArtifacts()) {
+            return;
+        }
         if (this.getRpcClientConfigurer() == null) {
             log.debug("No config implements RpcClientConfigurer. Please check your configuration.");
             return;
@@ -55,6 +60,7 @@ public class RpcClientConfigurationSupport implements BeanDefinitionRegistryPost
             final BeanDefinitionRegistry beanDefinitionRegistry = (BeanDefinitionRegistry) this.applicationContext;
             // 获取真实接口 Class, 并作为构造方法的参数
             rpcClientBeanDefinition.getConstructorArgumentValues().addGenericArgumentValue(clazz);
+            rpcClientBeanDefinition.setAttribute(FactoryBean.OBJECT_TYPE_ATTRIBUTE, clazz);
             // 修改类为 RpcClientProxyFactory
             rpcClientBeanDefinition.setBeanClass(RpcClientProxyFactory.class);
             // 采用按照类型注入的方式

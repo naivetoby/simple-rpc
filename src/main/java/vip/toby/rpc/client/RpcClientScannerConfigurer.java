@@ -1,6 +1,7 @@
 package vip.toby.rpc.client;
 
 import lombok.Setter;
+import org.springframework.aot.AotDetector;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
@@ -30,6 +31,9 @@ public class RpcClientScannerConfigurer implements BeanDefinitionRegistryPostPro
 
     @Override
     public void postProcessBeanDefinitionRegistry(@Nonnull BeanDefinitionRegistry registry) throws BeansException {
+        if (AotDetector.useGeneratedArtifacts()) {
+            return;
+        }
         final ClassPathRpcClientScanner scanner = new ClassPathRpcClientScanner(registry);
         scanner.setResourceLoader(this.applicationContext);
         scanner.registerFilters();

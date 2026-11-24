@@ -1,6 +1,7 @@
 package vip.toby.rpc.client;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.FactoryBean;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinitionHolder;
@@ -10,6 +11,7 @@ import org.springframework.beans.factory.support.DefaultBeanNameGenerator;
 import org.springframework.beans.factory.support.GenericBeanDefinition;
 import org.springframework.context.annotation.ClassPathBeanDefinitionScanner;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
+import org.springframework.util.ClassUtils;
 import vip.toby.rpc.annotation.RpcClient;
 
 import javax.annotation.Nonnull;
@@ -72,7 +74,9 @@ public class ClassPathRpcClientScanner extends ClassPathBeanDefinitionScanner {
             final String beanClassName = rpcClientBeanDefinition.getBeanClassName();
             if (beanClassName != null) {
                 // 获取真实接口 class，并作为构造方法的参数
-                rpcClientBeanDefinition.getConstructorArgumentValues().addGenericArgumentValue(beanClassName);
+                final Class<?> clientInterface = ClassUtils.resolveClassName(beanClassName, getResourceLoader().getClassLoader());
+                rpcClientBeanDefinition.getConstructorArgumentValues().addGenericArgumentValue(clientInterface);
+                rpcClientBeanDefinition.setAttribute(FactoryBean.OBJECT_TYPE_ATTRIBUTE, clientInterface);
                 // 修改类为 RpcClientProxyFactory
                 rpcClientBeanDefinition.setBeanClass(RpcClientProxyFactory.class);
                 // 采用按照类型注入的方式

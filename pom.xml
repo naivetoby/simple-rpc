@@ -199,6 +199,39 @@
 
     <profiles>
         <profile>
+            <id>native-interop</id>
+            <build>
+                <directory>${project.basedir}/target/native-${native.role}</directory>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <configuration>
+                            <compileSourceRoots>
+                                <compileSourceRoot>${project.basedir}/src/main/java</compileSourceRoot>
+                                <compileSourceRoot>${project.basedir}/src/test/native/shared</compileSourceRoot>
+                                <compileSourceRoot>${project.basedir}/src/test/native/${native.role}</compileSourceRoot>
+                            </compileSourceRoots>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot-maven-plugin</artifactId>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.graalvm.buildtools</groupId>
+                        <artifactId>native-maven-plugin</artifactId>
+                        <configuration>
+                            <imageName>native-${native.role}</imageName>
+                            <buildArgs>
+                                <buildArg>--initialize-at-build-time=com.alibaba.fastjson2</buildArg>
+                            </buildArgs>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
             <id>rabbit-it</id>
             <build>
                 <plugins>
