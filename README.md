@@ -131,7 +131,12 @@ final int sum = calculatorClient.add(dto).getIntResult(0); // 7
 | `mvn clean test` | 单元测试：验证消息格式、路由、参数校验、去重和 ACK 行为，无需启动 RabbitMQ。 |
 | `mvn -Prabbit-it clean test` | 单元测试 + 真实 RabbitMQ：验证同步往返、普通异步、同键顺序、分区收件队列，以及普通和分区延迟投递。 |
 
-本机运行集成测试时，启用延迟插件，准备专用的空 vhost `simple-rpc-it`，并为测试账号授予配置、读、写权限。可通过 `SPRING_RABBITMQ_HOST`、`SPRING_RABBITMQ_PORT`、`SPRING_RABBITMQ_USERNAME`、`SPRING_RABBITMQ_PASSWORD` 指定连接。[GitHub Actions](.github/workflows/test.yml) 会在 push 和 PR 时准备临时 RabbitMQ 并运行完整测试。
+本地运行集成测试前，先启用 RabbitMQ 延迟消息插件，准备专用的空 vhost `simple-rpc-it`，并授予测试账号在该 vhost 上配置、读、写的权限。通过 `SPRING_RABBITMQ_HOST` 和 `SPRING_RABBITMQ_PORT` 指定服务地址，通过 `SPRING_RABBITMQ_USERNAME` 和 `SPRING_RABBITMQ_PASSWORD` 设置测试账号和密码。
+
+[GitHub Actions](.github/workflows/test.yml) 在推送代码或提交 PR 时并行运行两项检查：
+
+- **JVM tests**：使用 JDK 21 运行单元测试和 RabbitMQ 集成测试。
+- **Native interop**：在 Linux 上使用 GraalVM 构建原生客户端和服务端，通过 RabbitMQ 验证同步回显和服务端参数校验。详见[原生测试说明](src/test/native/README.md)。
 
 - [端到端用例](src/test/java/vip/toby/demo/DemoIT.java)：查看真实调用及预期结果。
 - [客户端接口](src/test/java/vip/toby/demo/client) · [服务端方法](src/test/java/vip/toby/demo/server) · [手动注册示例](src/test/java/vip/toby/demo/config/RpcClientConfig.java)。
