@@ -26,7 +26,7 @@ Simple-RPC 是基于 Spring Boot 和 RabbitMQ 的轻量级 Java RPC 框架。服
 <dependency>
     <groupId>vip.toby.rpc</groupId>
     <artifactId>simple-rpc</artifactId>
-    <version>3.4.10</version>
+    <version>3.5.0</version>
 </dependency>
 ```
 
