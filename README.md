@@ -1,395 +1,142 @@
-## Simple-RPC
+# Simple-RPC
 
- 非常轻量级的 RPC 调用框架，基于 RabbitMQ 消息队列，使用 Spring-Boot 开发。
+Simple-RPC 是基于 Spring Boot 和 RabbitMQ 的轻量级 Java RPC 框架。服务端用注解暴露方法，客户端通过接口调用，无需在业务代码中创建队列、绑定交换机或处理消息回复。
 
-## Spring-Boot && Simple-RPC Dependency
+[快速开始](#快速开始) · [分区路由](#分区路由) · [测试与示例](#测试与示例) · [Maven Central](https://central.sonatype.com/artifact/vip.toby.rpc/simple-rpc)
+
+## 主要特性
+
+| 特性 | 使用场景 |
+| --- | --- |
+| 同步调用 `SYNC` | 需要等待结果时使用。客户端通过 `RpcResult` 读取业务数据或错误明细。 |
+| 异步调用 `ASYNC` | 只需提交任务时使用。客户端发送后返回，服务端从队列消费。 |
+| 延迟调用 `DELAY` | 需要稍后执行时使用。请求 DTO 继承 `RpcDelayDTO`，通过 `setDelay(...)` 设置延迟毫秒数。需启用 [RabbitMQ 延迟消息插件](https://github.com/rabbitmq/rabbitmq-delayed-message-exchange)。 |
+| 分区消费 | 异步和延迟方法可按业务字段路由到分区队列；未指定分区键的方法仍走主队列。 |
+| 服务注册 | 自动扫描客户端接口，也支持手动注册扫描范围外的接口。客户端和服务端可用方法别名约定调用名称。 |
+| 参数校验 | 请求可使用 `JSONObject` 或标注 `@RpcDTO` 的 JavaBean。服务端在 DTO 参数上使用 `@Valid` 或 `@Validated` 启用校验。 |
+| 重复调用检测 | 通过 `RpcServerHandlerInterceptor` 按消息 ID 或请求内容实现去重策略。 |
+
+## 快速开始
+
+以下示例在一个 Spring Boot 应用中同时启动客户端和服务端，通过 RabbitMQ 完成一次加法调用。当前分支使用 **JDK 21、Spring Boot 4.2.0 和 Maven**。
+
+### 1. 引入依赖并连接 RabbitMQ
 
 ```xml
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-
-    <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.2.0</version>
-    </parent>
-    
-    <groupId>com.demo</groupId>
-    <artifactId>demo</artifactId>
+<dependency>
+    <groupId>vip.toby.rpc</groupId>
+    <artifactId>simple-rpc</artifactId>
     <version>3.4.10</version>
-
-    <dependencies>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>vip.toby.rpc</groupId>
-            <artifactId>simple-rpc</artifactId>
-            <version>3.4.10</version>
-        </dependency>
-    </dependencies>
-</project>
+</dependency>
 ```
 
-## BizCode
-```java
-@Getter
-public enum BizCode implements ICode {
+依赖版本请以 [Maven Central 已发布版本](https://central.sonatype.com/artifact/vip.toby.rpc/simple-rpc/versions) 为准。在 `application.yml` 中配置连接，并赋予应用账号在目标 vhost 上配置、读、写的权限：
 
-    PLUS_ERROR(1000, "计算错误"); // 计算错误
-
-    private final int code;
-    private final String message;
-
-    BizCode(int code, String message) {
-        this.code = code;
-        this.message = message;
-    }
-
-}
+```yaml
+spring:
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME}
+    password: ${RABBITMQ_PASSWORD}
+    virtual-host: ${RABBITMQ_VHOST:/}
 ```
 
+### 2. 启用 Simple-RPC
 
-## RpcDTO
-```java
-@Data
-@RpcDTO
-public class PlusDTO {
-
-    @NotNull
-    @Min(1)
-    private Integer x;
-
-    private int y;
-
-}
-
-@Data
-@RpcDTO
-public class DelayPlusDTO extends RpcDelayDTO {
-
-    @NotNull
-    private Long createTime;
-
-    @NotNull
-    @Min(1)
-    private Integer x;
-
-    private int y;
-
-}
-```
-
-## RpcClientConfig
-```java
-@Component
-public class RpcClientConfig implements RpcClientConfigurer {
-
-    @Override
-    public void addRpcClientRegistry(RpcClientRegistry rpcClientRegistry) {
-        // 如果 @RpcClient 不在当前项目，可以手动配置
-        rpcClientRegistry.addRegistration(OtherSyncClient.class);
-    }
-
-}
-```
-
-## RpcServer Demo
-
-Spring AOP 代理场景下会自动读取目标类，参数上的 `@Validated` / `@Valid` 校验仍可正常生效。
+在启动类上添加 `@EnableSimpleRpc`。本例使用拦截器的默认实现，允许重复调用：
 
 ```java
-@RpcServer(name = "rpc-queue-name", type = {RpcType.SYNC, RpcType.ASYNC}, xMessageTTL = 1000, threadNum = 4, partitionNum = 16)
-public class Server {
-
-    @RpcServerMethod
-    public R methodName1(@Validated PlusDTO plusDTO) {
-        final int x = plusDTO.getX();
-        final int y = plusDTO.getY();
-        return R.okResult(x + y);
-    }
-
-    @RpcServerMethod("methodName2-alias")
-    public R methodName2(@Validated PlusDTO plusDTO) {
-        return R.build(BizCode.PLUS_ERROR);
-    }
-
-}
-
-@RpcServer(name = "rpc-queue-name-other", type = RpcType.SYNC)
-public class OtherServer {
-
-    @RpcServerMethod
-    public R methodName3(PlusDTO plusDTO) {
-        final int x = plusDTO.getX();
-        final int y = plusDTO.getY();
-        return R.okResult(x + y).message("计算成功, x: {}, y: {}", x, y);
-    }
-
-}
-
-@RpcServer(name = "delay-plus", type = RpcType.DELAY)
-@Slf4j
-public class DelayPlusServer {
-
-    @RpcServerMethod
-    public R delayPlus(@Validated DelayPlusDTO delayPlusDTO) {
-        final int x = delayPlusDTO.getX();
-        final int y = delayPlusDTO.getY();
-        final int delay = delayPlusDTO.getDelay();
-        final long createTime = delayPlusDTO.getCreateTime();
-        final long now = System.currentTimeMillis();
-        log.info("delayPlusDTO: {}, result: {}, delay: {}, duration: {}", delayPlusDTO, x + y, delay, now - createTime);
-        return R.ok();
-    }
-
-}
-```
-
-## Error Detail
-
-```java
-return R.failMessage("参数错误").detail(Map.of("field", "role", "reason", "不能为空"));
-```
-
-```json
-{"code":1,"msg":"参数错误","det":{"field":"role","reason":"不能为空"}}
-```
-
-## RpcClient Demo
-```java
-@RpcClient(name = "rpc-queue-name", type = RpcType.SYNC)
-public interface SyncClient {
-
-    @RpcClientMethod
-    RpcResult methodName1(PlusDTO plusDTO);
-
-    @RpcClientMethod("methodName2-alias")
-    RpcResult methodName2(PlusDTO plusDTO);
-
-}
-
-@RpcClient(name = "rpc-queue-name", type = RpcType.ASYNC, partitionNum = 16)
-public interface AsyncClient {
-
-    @RpcClientMethod
-    void methodName1(PlusDTO plusDTO);
-
-    @RpcClientMethod(value = "methodName2-alias", partitionKey = "x")
-    void methodName2(PlusDTO plusDTO);
-
-}
-
-@RpcClient(name = "rpc-queue-name-other", type = RpcType.SYNC)
-public interface OtherSyncClient {
-
-    @RpcClientMethod
-    RpcResult methodName3(PlusDTO plusDTO);
-
-}
-
-@RpcClient(name = "delay-plus", type = RpcType.DELAY)
-public interface DelayClient {
-
-    @RpcClientMethod
-    void delayPlus(DelayPlusDTO delayPlusDTO);
-
-}
-```
-
-## Partition Key
-
-只有 `ASYNC` / `DELAY` 并且声明了 `partitionKey` 的调用才会走分区队列；其他调用继续走原来的普通队列。
-
-- `@RpcClient.partitionNum` / `@RpcServer.partitionNum`
-  分区队列数量；默认值为 `1`，表示不启用分区；`>= 2` 时启用分区能力
-- `@RpcClientMethod.partitionKey`
-  指定当前异步/延迟方法使用请求体中的哪个字段作为分区键
-- 没有配置 `partitionKey` 的方法
-  继续发送到原来的 `rpcName` 队列，按 `threadNum` 并发消费
-- 配置了 `partitionKey` 的方法
-  会按字段值哈希到 `rpcName.0 ... rpcName.N-1` 中的一条分区队列
-- 分区队列
-  由 RabbitMQ 队列本身保证 FIFO，并且每条分区队列固定单线程消费
-- `SYNC`
-  不支持分区路由；如果配置了 `partitionNum` 或 `partitionKey`，会直接报错
-- `ASYNC` / `DELAY`
-  支持分区路由；是否启用取决于客户端是否声明了 `partitionKey`
-- 多实例部署时
-  分区队列开启 `x-single-active-consumer`，同一时刻每个分区队列只有一个活跃 consumer，从而保证同一分区键不会被多个实例并发消费
-- 分区顺序语义
-  保证的是“同一分区键映射到同一分区队列后的顺序消费”，不是整个服务所有消息的全局顺序
-- 配置要求
-  `client` 和 `server` 两边必须使用相同的 `partitionNum`，否则会出现 producer 发送到了 server 未声明的分区队列
-
-例如：
-
-```java
-@RpcServer(name = "order", type = {RpcType.SYNC, RpcType.ASYNC, RpcType.DELAY}, threadNum = 8, partitionNum = 16)
-```
-
-启动后会拆成三组监听资源：
-
-- `SYNC`
-  - exchange: `simple.rpc.sync`
-  - queue: `order.sync`
-  - listener: 并发 `threadNum`
-- `ASYNC`
-  - exchange: `simple.rpc.async`
-  - 主队列: `order.async`，未配置 `partitionKey` 的 method 会到这里
-  - 分区队列: `order.async.0 ~ order.async.15`，配置了 `partitionKey` 的 method 会按 key 路由到这里
-  - 主队列 listener: 并发 `threadNum`
-  - 分区队列 listener: 每条并发 `1`
-- `DELAY`
-  - exchange: `simple.rpc.delay`
-  - 主队列: `order.delay`，未配置 `partitionKey` 的 method 会到这里
-  - 分区队列: `order.delay.0 ~ order.delay.15`，配置了 `partitionKey` 的 method 会按 key 路由到这里
-  - 主队列 listener: 并发 `threadNum`
-  - 分区队列 listener: 每条并发 `1`
-
-也就是说，同一个 `@RpcServer` 会按 `type` 拆成不同的 exchange、queue 和 listener；`partitionNum` 只会在 `ASYNC` / `DELAY` 分支里生效。
-
-```java
-@Data
-@RpcDTO
-public class CircleEventDTO {
-
-    @NotNull
-    private Long uid;
-
-    @NotNull
-    private Long circleId;
-
-}
-```
-
-```java
-@RpcServer(name = "circle-event", type = RpcType.ASYNC, threadNum = 8, partitionNum = 16)
-public class CircleEventServer {
-
-    @RpcServerMethod
-    public R refreshCircleStat(@Validated CircleEventDTO dto) {
-        return R.ok();
-    }
-
-    @RpcServerMethod
-    public R handleCircleMemberEvent(@Validated CircleEventDTO dto) {
-        return R.ok();
-    }
-
-}
-```
-
-```java
-@RpcClient(name = "circle-event", type = RpcType.ASYNC, partitionNum = 16)
-public interface CircleEventClient {
-
-    @RpcClientMethod
-    void refreshCircleStat(CircleEventDTO dto);
-
-    @RpcClientMethod(partitionKey = "uid")
-    void handleCircleMemberEvent(CircleEventDTO dto);
-
-}
-```
-
-上面这个例子里：
-
-- `refreshCircleStat` 没有配置 `partitionKey`，会继续普通并发消费
-- `handleCircleMemberEvent` 配置了 `partitionKey = "uid"`，同一个 `uid` 的消息会顺序执行
-
-注意：
-
-- `partitionKey` 取的是请求 `data` 里的字段名，必须能在消息体中取到
-- `client` 和 `server` 两边都需要配置相同的 `partitionNum`
-- `SYNC` 不支持分区；只有 `ASYNC` / `DELAY` 支持
-- 分区顺序消费依赖 RabbitMQ 分区队列，而不是进程内本地队列
-- 单个分区队列在多实例下依赖 RabbitMQ `x-single-active-consumer` 保持单活消费
-
-## Application Demo
-```java
-@EnableSimpleRpc
 @SpringBootApplication
-@RequiredArgsConstructor
-@Slf4j
+@EnableSimpleRpc
 public class Application {
-
-    private final AsyncClient asyncClient;
-    private final SyncClient syncClient;
-    private final OtherSyncClient otherSyncClient;
-    private final DelayClient delayClient;
-
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
     }
 
-    @PostConstruct
-    public void test() {
-        new Thread(() -> {
-
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                log.error(e.getMessage(), e);
-            }
-
-            // 同步调用 1
-            final PlusDTO plusDTO = new PlusDTO();
-            plusDTO.setX(1);
-            plusDTO.setY(1);
-            RpcResult rpcResult = syncClient.methodName1(plusDTO);
-            log.info("syncClient.methodName1, Ok: {}, Result: {}", rpcResult.isOk(), rpcResult.getResult());
-
-            // 同步调用 1-1
-            plusDTO.setX(0);
-            rpcResult = syncClient.methodName1(plusDTO);
-            log.info("syncClient.methodName1, Ok: {}, Message: {}, Code: {}", rpcResult.isOk(), rpcResult.getMessage(), rpcResult.getCode());
-
-            // 同步调用 2
-            plusDTO.setX(2);
-            rpcResult = syncClient.methodName2(plusDTO);
-            log.info("syncClient.methodName2, Ok: {}, Message: {}, Code: {}", rpcResult.isOk(), rpcResult.getMessage(), rpcResult.getCode());
-
-            // 异步调用
-            asyncClient.methodName2(plusDTO);
-
-            // 同步调用 3
-            rpcResult = otherSyncClient.methodName3(plusDTO);
-            log.info("otherSyncClient.methodName3, Ok: {}, Result: {}", rpcResult.isOk(), rpcResult.getResult());
-
-            // 延迟调用, 注意⚠️ RabbitMQ 需要启用插件 https://github.com/rabbitmq/rabbitmq-delayed-message-exchange
-            final DelayPlusDTO delayPlusDTO = new DelayPlusDTO();
-            delayPlusDTO.setCreateTime(System.currentTimeMillis());
-            // 延迟 3 秒后调用
-            delayPlusDTO.setDelay(3000);
-            delayPlusDTO.setX(5);
-            delayPlusDTO.setY(8);
-            delayClient.delayPlus(delayPlusDTO);
-
-        }).start();
+    @Bean
+    RpcServerHandlerInterceptor rpcServerHandlerInterceptor() {
+        return new RpcServerHandlerInterceptor() {};
     }
-
 }
 ```
 
-## Demo 源码
-https://github.com/naivetoby/simple-rpc-demo
+### 3. 定义服务和客户端
 
-## application.yml 配置
-```yaml
-spring:
-  rabbitmq:
-    host: 127.0.0.1
-    port: 5672
-    username: admin
-    password: admin
-    virtual-host: default_vs
+客户端和服务端共用请求类型 `AddDTO`。用 `@RpcDTO` 标记请求对象，用 Lombok 的 `@Data` 生成 getter 和 setter：
+
+```java
+@Data
+@RpcDTO
+public class AddDTO {
+    @NotNull(message = "x 不能为空")
+    private Integer x;
+
+    @NotNull(message = "y 不能为空")
+    private Integer y;
+}
 ```
+
+将服务端和客户端放在启动类所在包或其子包下。两端通过服务名 `calculator` 和方法名 `add` 匹配，默认调用类型为 `SYNC`。
+
+```java
+@RpcServer(name = "calculator")
+public class CalculatorServer {
+    @RpcServerMethod
+    public R add(@Validated AddDTO dto) {
+        return R.okResult(dto.getX() + dto.getY());
+    }
+}
+```
+
+```java
+@RpcClient(name = "calculator")
+public interface CalculatorClient {
+    @RpcClientMethod
+    RpcResult add(AddDTO dto);
+}
+```
+
+### 4. 发起调用
+
+在 Spring Bean 中通过构造器注入 `CalculatorClient`，在应用就绪后调用：
+
+```java
+final AddDTO dto = new AddDTO();
+dto.setX(2);
+dto.setY(5);
+final int sum = calculatorClient.add(dto).getIntResult(0); // 7
+```
+
+`getIntResult(0)` 直接读取整数结果；没有数值结果时返回默认值 `0`。如果业务需要区分「结果为 0」和「调用失败」，保留 `RpcResult` 查看状态和错误明细；对象结果可用 `getResult(类型.class)` 读取。
+
+## 分区路由
+
+如果同一订单的事件需要按入队顺序处理，可以在异步客户端方法上指定 `@RpcClientMethod(partitionKey = "orderId")`。客户端和服务端的 `partitionNum` 必须相同，且至少为 `2`；分区键必须是请求体中存在且非空的字段。
+
+以服务名 `order`、分区数 `4` 为例：
+
+| 调用类型 | 交换机 | 默认队列 | 指定分区键时 |
+| --- | --- | --- | --- |
+| `SYNC` | `simple.rpc.sync` | `order.sync` | 不支持分区 |
+| `ASYNC` | `simple.rpc.async` | `order.async` | `order.async.0` 至 `order.async.3` 之一 |
+| `DELAY` | `simple.rpc.delay` | `order.delay` | `order.delay.0` 至 `order.delay.3` 之一 |
+
+相同键映射到同一分区，不同键也可能映射到同一分区。主队列按 `threadNum` 并发消费；每个分区队列使用单线程，并启用 RabbitMQ 的 `x-single-active-consumer`。顺序指**同一队列的入队顺序**，不是所有分区的全局顺序；对延迟消息，也不是客户端的发送顺序。
+
+## 测试与示例
+
+| 命令 | 验证范围 |
+| --- | --- |
+| `mvn clean test` | 单元测试：验证消息格式、路由、参数校验、去重和 ACK 行为，无需启动 RabbitMQ。 |
+| `mvn -Prabbit-it clean test` | 单元测试 + 真实 RabbitMQ：验证同步往返、普通异步、同键顺序、分区收件队列，以及普通和分区延迟投递。 |
+
+本机运行集成测试时，启用延迟插件，准备专用的空 vhost `simple-rpc-it`，并为测试账号授予配置、读、写权限。可通过 `SPRING_RABBITMQ_HOST`、`SPRING_RABBITMQ_PORT`、`SPRING_RABBITMQ_USERNAME`、`SPRING_RABBITMQ_PASSWORD` 指定连接。[GitHub Actions](.github/workflows/test.yml) 会在 push 和 PR 时准备临时 RabbitMQ 并运行完整测试。
+
+- [端到端用例](src/test/java/vip/toby/demo/DemoIT.java)：查看真实调用及预期结果。
+- [客户端接口](src/test/java/vip/toby/demo/client) · [服务端方法](src/test/java/vip/toby/demo/server) · [手动注册示例](src/test/java/vip/toby/demo/config/RpcClientConfig.java)。
+- [simple-rpc-demo](https://github.com/naivetoby/simple-rpc-demo)：独立的 Spring Boot 示例应用。
 
 ## 许可证
 
-[![license](https://img.shields.io/github/license/naivetoby/simple-rpc.svg?style=flat-square)](https://github.com/naivetoby/simple-rpc/blob/main/LICENSE)
-
-使用 Apache License - Version 2.0 协议开源。
+[Apache License 2.0](LICENSE)
