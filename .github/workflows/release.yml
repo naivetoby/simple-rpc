@@ -21,8 +21,8 @@ jobs:
           TAG: ${{ github.event.release.tag_name }}
         run: |
           set -euo pipefail
-          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo 'Expected a stable release tag, e.g. v3.4.11' >&2
+          if ! [[ "$TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo 'Expected a stable release tag, e.g. 3.4.10' >&2
             exit 1
           fi
           tagged_commit=$(git rev-parse "refs/tags/$TAG^{commit}")
@@ -35,7 +35,7 @@ jobs:
           import os
           import xml.etree.ElementTree as ET
           version = ET.parse('pom.xml').findtext('{*}version')
-          if os.environ['TAG'] != f'v{version}':
+          if os.environ['TAG'] != version:
               raise SystemExit(f'Tag does not match POM version {version}')
           PY
   test:
